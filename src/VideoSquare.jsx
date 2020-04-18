@@ -10,7 +10,7 @@ const VideoSquare = ({ stream }) => {
             }
         }
     }, [stream]);
-    return stream && <video autoPlay ref={videoRef} />;
+    return stream && <video autoPlay muted ref={videoRef} />;
 };
 
 export default VideoSquare;
