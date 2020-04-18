@@ -8,10 +8,9 @@ const VideoSquare = ({ stream }) => {
             } else {
                 node.src = URL.createObjectURL(stream);
             }
-            node.play();
         }
     }, [stream]);
-    return stream && <video ref={videoRef} />;
+    return stream && <video autoPlay ref={videoRef} />;
 };
 
 export default VideoSquare;
