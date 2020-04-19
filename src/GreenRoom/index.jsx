@@ -6,11 +6,12 @@ const GreenRoom = () => {
     const [other, setOther] = useState(null);
     const [myConnectionString, setMyConnectionString] = useState('');
     const [otherConnectionString, setOtherConnectionString] = useState('');
-    const [stream, setStream] = useState(null);
+    const [myStream, setMyStream] = useState(null);
+    const [otherStream, setOtherStream] = useState(null);
     const initiator = window.location.hash === '#init';
 
     const afterPermission = (stream) => {
-        setStream(stream);
+        setMyStream(stream);
         const peer = new Peer({
             initiator,
             stream,
@@ -26,9 +27,13 @@ const GreenRoom = () => {
             console.log('we connected!');
             peer.send('HELLO WORLD');
         });
-        // When receiving data from the remote peer
+        // Receive data from the remote peer
         peer.on('data', (data) => {
             console.log('received data: ', data.toString());
+        });
+        // Receive audio/video stream from remote peer
+        peer.on('stream', (remoteStream) => {
+            setOtherStream(remoteStream);
         });
         setOther(peer);
     };
@@ -49,11 +54,11 @@ const GreenRoom = () => {
     return <>
         <div>Welcome. Let's make the connections.</div>
         <div>First, let's enable your audio and video. So make yourself presentable. Put some pants on (or take them off if it's that kinda thing). Put on your makeup and/or mask. Enable your autotune whatnots.</div>
-        { stream ?
-            <VideoSquare stream={stream} /> :
+        { myStream ?
+            <VideoSquare stream={myStream} /> :
             <button onClick={getPermission}>Let's go!</button>
         }
-        { stream &&
+        { myStream &&
             <form onSubmit={connectToOther}>
                 <label>
                     Your connection info:
@@ -65,6 +70,9 @@ const GreenRoom = () => {
                 </label>
                 <input type="submit" value="Connect" />
             </form>
+        }
+        { otherStream &&
+            <VideoSquare stream={otherStream} />
         }
     </>;
 };
