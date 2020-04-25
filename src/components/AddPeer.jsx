@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import Peer from 'simple-peer';
+import { Context } from './Store';
 
-const AddPeer = ({ addPeerStream, initiator, myStream }) => {
+const AddPeer = () => {
     // Once connected, this component will simply render null.
     const [isConnected, setIsConnected] = useState(false);
     const [myConnectionString, setMyConnectionString] = useState('');
     const [theirConnectionString, setTheirConnectionString] = useState('');
     const [them, setThem] = useState(null);
+    const [state, dispatch] = useContext(Context);
+    const { initiator, myStream } = state;
 
     useEffect(() => {
         const peer = new Peer({
@@ -20,17 +23,14 @@ const AddPeer = ({ addPeerStream, initiator, myStream }) => {
         peer.on('signal', (connectionInfo) => {
             setMyConnectionString(JSON.stringify(connectionInfo));
         });
-        // When the remote peer is connected
+        // When the remote peer is connected, stop displaying the form
         peer.on('connect', () => {
             setIsConnected(true);
         });
-        // Receive data from the remote peer
-        peer.on('data', (data) => {
-            console.log('received data: ', data.toString());
-        });
         // Receive audio/video stream from remote peer
         peer.on('stream', (stream) => {
-            addPeerStream({
+            dispatch({
+                type : 'PEER_STREAM_ADD',
                 peer,
                 stream
             });

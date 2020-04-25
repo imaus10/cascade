@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { Context } from './Store';
 
-const AudioVideoSetup = ({ afterPermission }) => {
+const AudioVideoSetup = () => {
+    const [, dispatch] = useContext(Context);
+
     // TODO: allow choice of audio/video input
     const getPermission = () => {
         // Ask for webcam/microphone permission
         navigator.mediaDevices.getUserMedia({
             audio : true,
             video : true
-        }).then(afterPermission);
+        }).then((stream) => {
+            dispatch({
+                type : 'MY_STREAM_SET',
+                stream
+            });
+        });
     };
 
     return <section>

@@ -1,9 +1,14 @@
 import React from 'react';
 import GreenRoom from './GreenRoom';
+import Store from './Store';
 
 const App = () => {
     // TODO: Splash to explain what it is, button to enter green room.
-    return <GreenRoom />;
+    return (
+        <Store>
+            <GreenRoom />
+        </Store>
+    );
 };
 
 export default App;
