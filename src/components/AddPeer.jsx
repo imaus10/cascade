@@ -77,7 +77,11 @@ const AddPeer = () => {
     const submitButton = <input key="connect" type="submit" value="Connect!" />;
     const connectionFields = [];
     if (initiator) {
-        connectionFields.push(myConnectionField, theirConnectionField, submitButton);
+        if (myConnectionString) {
+            connectionFields.push(myConnectionField, theirConnectionField, submitButton);
+        } else {
+            connectionFields.push('Generating connection info...');
+        }
     } else {
         connectionFields.push(theirConnectionField, submitButton);
         // The responder has to hit connect first to generate their answer
