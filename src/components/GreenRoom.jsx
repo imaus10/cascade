@@ -6,15 +6,15 @@ import VideoSquare from './VideoSquare';
 
 const GreenRoom = () => {
     const [state] = useContext(Context);
-    console.log(state);
-    const { myStream, peerStreams } = state;
+    console.log('STATE', state);
+    const { myStream, streams } = state;
 
     return <>
         { myStream ?
             <VideoSquare stream={myStream} /> :
             <AudioVideoSetup /> }
-        { Object.entries(peerStreams).map(([peerId, { stream }]) => {
-            return <VideoSquare key={peerId} stream={stream} />;
+        { Object.entries(streams).map(([id, stream]) => {
+            return <VideoSquare key={id} stream={stream} />;
         }) }
         { myStream && <AddPeers /> }
 

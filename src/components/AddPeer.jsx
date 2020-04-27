@@ -1,40 +1,50 @@
 import React, { useContext, useEffect, useState } from 'react';
-import Peer from 'simple-peer';
 import { Context } from './Store';
+import { addRelayListeners, makePeer } from '../state/events';
 
 const AddPeer = () => {
-    // Once connected, this component will simply render null.
+    const [state, dispatch] = useContext(Context);
+    const { initiator, myStream } = state;
     const [isConnected, setIsConnected] = useState(false);
     const [myConnectionString, setMyConnectionString] = useState('');
     const [theirConnectionString, setTheirConnectionString] = useState('');
     const [them, setThem] = useState(null);
-    const [state, dispatch] = useContext(Context);
-    const { initiator, myStream } = state;
 
     useEffect(() => {
-        const peer = new Peer({
-            initiator,
-            stream  : myStream,
-            // Set to false for now, because with true it sends multiple signals
-            // (will need full signaling server to relay multiple signals)
-            trickle : false
-        });
+        const peer = makePeer(initiator, myStream);
         // Provides the connection string to send to remote peer
         peer.on('signal', (connectionInfo) => {
             setMyConnectionString(JSON.stringify(connectionInfo));
         });
-        // When the remote peer is connected, stop displaying the form
+        // When the remote peer is connected
         peer.on('connect', () => {
+            // Stop displaying the form
             setIsConnected(true);
+            if (initiator) {
+                // Automatically route signals between invitees
+                dispatch({
+                    type : 'PEER_RELAY',
+                    id   : peer._id,
+                });
+            }
         });
         // Receive audio/video stream from remote peer
         peer.on('stream', (stream) => {
             dispatch({
-                type : 'PEER_STREAM_ADD',
-                peer,
+                type : 'STREAMS_ADD',
+                id   : peer._id,
                 stream
             });
         });
+        addRelayListeners(peer, state, dispatch);
+        dispatch({
+            type : 'PEERS_ADD',
+            // The ID of the direct connections won't match across machines, but
+            // that doesn't matter because no signals need to be routed for them.
+            id   : peer._id,
+            peer
+        });
+        // Save the peer for this component so we can signal on form submit
         setThem(peer);
     }, []);
 
