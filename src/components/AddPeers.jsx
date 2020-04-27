@@ -1,11 +1,13 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useState } from 'react';
 import AddPeer from './AddPeer';
 import { Context } from './Store';
 
 const AddPeers = () => {
     const [state] = useContext(Context);
     const { initiator } = state;
-    const [pendingConnections, setPendingConnections] = useState([]);
+    const [pendingConnections, setPendingConnections] = useState([
+        <AddPeer key={0} />
+    ]);
 
     const addNewConnection = () => {
         setPendingConnections([
@@ -13,10 +15,6 @@ const AddPeers = () => {
             <AddPeer key={pendingConnections.length} />
         ]);
     };
-
-    useEffect(() => {
-        addNewConnection();
-    }, []);
 
     return <>
         { pendingConnections }
