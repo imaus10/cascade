@@ -3,6 +3,7 @@ import AddPeers from './AddPeers';
 import AudioVideoSetup from './AudioVideoSetup';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
+import './GreenRoom.css';
 
 const GreenRoom = () => {
     const [state] = useContext(Context);
@@ -10,12 +11,14 @@ const GreenRoom = () => {
     const { myStream, streams } = state;
 
     return <>
-        { myStream ?
-            <VideoSquare stream={myStream} /> :
-            <AudioVideoSetup /> }
-        { Object.entries(streams).map(([id, stream]) => {
-            return <VideoSquare key={id} stream={stream} />;
-        }) }
+        <div className="videos">
+            { myStream ?
+                <VideoSquare stream={myStream} /> :
+                <AudioVideoSetup /> }
+            { Object.entries(streams).map(([id, stream]) => {
+                return <VideoSquare key={id} stream={stream} />;
+            }) }
+        </div>
         { myStream && <AddPeers /> }
 
     </>;

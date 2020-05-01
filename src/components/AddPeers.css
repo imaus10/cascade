@@ -1,0 +1,7 @@
+.pending-connections {
+    display: flex;
+}
+
+.pending-connections > :not(:first-child) {
+    margin-left: 10px;
+}
