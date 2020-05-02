@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 
-const VideoSquare = ({ stream }) => {
+const VideoSquare = ({ muted = false, stream }) => {
     const videoRef = useCallback((node) => {
         if (node) {
             if ('srcObject' in node) {
@@ -10,7 +10,7 @@ const VideoSquare = ({ stream }) => {
             }
         }
     }, [stream]);
-    return stream && <video autoPlay ref={videoRef} />;
+    return stream && <video autoPlay muted={muted} ref={videoRef} />;
 };
 
 export default VideoSquare;
