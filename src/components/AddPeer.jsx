@@ -36,6 +36,9 @@ const AddPeer = () => {
                 stream
             });
         });
+        peer.on('error', (error) => {
+            console.error('Peer error:', error);
+        });
         addRelayListeners(peer, state, dispatch);
         dispatch({
             type : 'PEERS_ADD',
