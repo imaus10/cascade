@@ -1,10 +1,11 @@
 import { peerSendJSON, relayConnections } from './events';
 
 export const initialState = {
-    initiator : window.location.hash === '#init',
-    myStream  : null,
-    peers     : {},
-    streams   : {}
+    initiator    : window.location.hash === '#init',
+    myStream     : null,
+    peers        : {},
+    streams      : {},
+    videoElement : null
 };
 
 // This reducer is not a pure function and I'm not sorry about it.
@@ -18,7 +19,7 @@ export default function reducer(state, action) {
         case 'MY_STREAM_SET':
             return {
                 ...state,
-                myStream: action.stream
+                myStream : action.stream
             };
         case 'PEER_RELAY': {
             const { id } = action;
@@ -38,7 +39,7 @@ export default function reducer(state, action) {
         case 'PEERS_ADD':
             return {
                 ...state,
-                peers: {
+                peers : {
                     ...peers,
                     // This ID should match on all machines so the initiator
                     // can relay signals between invitees automatically.
@@ -49,11 +50,16 @@ export default function reducer(state, action) {
         case 'STREAMS_ADD':
             return {
                 ...state,
-                streams: {
+                streams : {
                     ...streams,
                     // This ID matches the peer ID
                     [action.id] : action.stream,
                 }
+            };
+        case 'VIDEO_ELEMENT_SET':
+            return {
+                ...state,
+                videoElement : action.videoElement
             };
         default:
             return state;
