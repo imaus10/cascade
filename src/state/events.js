@@ -120,3 +120,10 @@ export function addRelayListeners(peer, state, dispatch) {
         }
     });
 }
+
+export function replacePeerStreams(peers, oldStream, newStream) {
+    Object.values(peers).forEach((peer) => {
+        peer.removeStream(oldStream)
+        peer.addStream(newStream);
+    });
+}

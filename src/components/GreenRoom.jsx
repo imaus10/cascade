@@ -12,9 +12,10 @@ const GreenRoom = () => {
 
     return <>
         <div className="videos">
-            { myStream ?
-                <VideoSquare muted stream={myStream} /> :
-                <AudioVideoSetup /> }
+            <div className="my-stream">
+                { myStream && <VideoSquare isMe stream={myStream} /> }
+                <AudioVideoSetup />
+            </div>
             { Object.entries(streams).map(([id, stream]) => {
                 return <VideoSquare key={id} stream={stream} />;
             }) }

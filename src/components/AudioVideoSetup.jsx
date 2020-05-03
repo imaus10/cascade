@@ -1,28 +1,30 @@
-import React, { useContext } from 'react';
-import { Context } from './Store';
+import React, { useState } from 'react';
+import InputOutputSelect from './InputOutputSelect';
 
 const AudioVideoSetup = () => {
-    const [, dispatch] = useContext(Context);
+    const [showWelcome, setShowWelcome] = useState(true);
 
-    // TODO: allow choice of audio/video input
-    const getPermission = () => {
-        // Ask for webcam/microphone permission
-        navigator.mediaDevices.getUserMedia({
-            audio : true,
-            video : true
-        }).then((stream) => {
-            dispatch({
-                type : 'MY_STREAM_SET',
-                stream
-            });
-        });
+    const welcomeMessage = <>
+        <div>Welcome. Let's make the connections.</div>
+        <div>First, enable your audio and video. Before you click the button, put on headphones so there's no feedback!</div>
+        <button onClick={() => setShowWelcome(false)}>
+            Let's go!
+        </button>
+    </>;
+
+    const style = {
+        alignItems    : 'center',
+        display       : 'flex',
+        flexDirection : showWelcome ? 'column' : 'row'
     };
 
-    return <section>
-        <div>Welcome. Let's make the connections.</div>
-        <div>First, enable your audio and video.</div>
-        <button onClick={getPermission}>Let's go!</button>
-    </section>
+    return (
+        <section style={style}>
+            { showWelcome ?
+                welcomeMessage :
+                <InputOutputSelect /> }
+        </section>
+    );
 };
 
 export default AudioVideoSetup;
