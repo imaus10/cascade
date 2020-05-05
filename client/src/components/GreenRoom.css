@@ -1,8 +1,19 @@
 .my-stream {
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+.my-stream .io-settings {
+    bottom: 0;
+    position: absolute;
+    right: 0;
 }
 
 .videos {
     display: flex;
+}
+
+.videos > * {
+    flex: 1;
 }

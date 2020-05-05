@@ -1,4 +1,4 @@
-import React, { createContext, useReducer } from "react";
+import React, { createContext, useReducer } from 'react';
 import reducer, { initialState } from '../state/reducer';
 
 const Store = ({ children }) => {

@@ -1,10 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from './Store';
-import { replacePeerStreams } from '../state/events';
 
 const InputOutputSelect = () => {
     const [state, dispatch] = useContext(Context);
-    const { myStream, peers, videoElement } = state;
+    const { myStream, videoElement } = state;
     const [devices, setDevices] = useState([]);
     const [showSetup, setShowSetup] = useState(true);
     const [audioInput, setAudioInput] = useState(null);
@@ -31,7 +30,6 @@ const InputOutputSelect = () => {
             type : 'MY_STREAM_SET',
             stream
         });
-        replacePeerStreams(peers, myStream, stream);
     };
 
     useEffect(() => {
@@ -50,7 +48,6 @@ const InputOutputSelect = () => {
 
     useEffect(() => {
         if (videoElement && audioOutput) {
-            console.log('what are you sinking about?');
             videoElement.setSinkId(audioOutput);
         }
     }, [audioOutput, videoElement]);
@@ -76,27 +73,30 @@ const InputOutputSelect = () => {
         ]
     }, [{}, {}, {}]);
 
-    return showSetup ? <>
-        { devicesSorted.map((deviceMap, index) => {
-            const label = kindLabels[index];
-            const [selectedDeviceId, setSelectedDeviceId] = selectedDevices[index];
-            return (
-                <label key={label}>
-                    {label}
-                    <select
-                        onChange={(event) => setSelectedDeviceId(event.target.value)}
-                        value={selectedDeviceId || 'default'}
-                    >
-                        { Object.values(deviceMap).map(({ deviceId, label }) => (
-                            <option key={deviceId} value={deviceId}>{label}</option>
-                        )) }
-                    </select>
-                </label>
-            );
-        }) }
-        <button onClick={() => setShowSetup(false)}>x</button>
-    </> : (
-        <button onClick={() => setShowSetup(true)}>Audio/Video settings</button>
+    return (
+        <div className="io-settings">
+            { showSetup ? <>
+                { devicesSorted.map((deviceMap, index) => {
+                    const label = kindLabels[index];
+                    const [selectedDeviceId, setSelectedDeviceId] = selectedDevices[index];
+                    return (
+                        <label key={label}>
+                            {label}
+                            <select
+                                onChange={(event) => setSelectedDeviceId(event.target.value)}
+                                value={selectedDeviceId || 'default'}
+                            >
+                                { Object.values(deviceMap).map(({ deviceId, label }) => (
+                                    <option key={deviceId} value={deviceId}>{label}</option>
+                                )) }
+                            </select>
+                        </label>
+                    );
+                }) }
+                <button onClick={() => setShowSetup(false)}>x</button>
+            </> :
+            <button onClick={() => setShowSetup(true)}>Audio/Video settings</button> }
+        </div>
     );
 };
 

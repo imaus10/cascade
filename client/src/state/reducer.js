@@ -1,51 +1,95 @@
-import { peerSendJSON, relayConnections } from './events';
+import Peer from 'simple-peer';
 
 export const initialState = {
-    initiator    : window.location.hash === '#init',
     myStream     : null,
     peers        : {},
+    signalServer : null,
     streams      : {},
     videoElement : null
 };
 
-// This reducer is not a pure function and I'm not sorry about it.
-// The PEER (singular) actions don't mutate state but just call Peer functions.
-// That's because when the events are triggered,
-// we need the most recent state provided in this reducer.
+function replacePeerStreams(state, action) {
+    const { myStream : oldStream, peers } = state;
+    const { stream : newStream } = action;
+    Object.values(peers).forEach((peer) => {
+        peer.removeStream(oldStream)
+        peer.addStream(newStream);
+    });
+}
+
+function handleSignal(state, action) {
+    const { myStream, peers, signalServer } = state;
+    // Sending dispatch in the action is kind of a hack...
+    const { data, dispatch } = action;
+    const {
+        forId  : myId,
+        fromId : theirId,
+        signal : receiveSignal
+    } = JSON.parse(data);
+    const initiator = receiveSignal === 'initiate';
+    const isNewPeer = !Object.keys(peers).includes(theirId);
+    const peer = isNewPeer ?
+        new Peer({
+            initiator,
+            stream : myStream,
+        }) :
+        peers[theirId];
+    if (isNewPeer) {
+        console.log(`making new peer ${theirId} (initiator = ${initiator})`);
+        peer.on('signal', (signal) => {
+            console.log(`sending signal to ${theirId}`, signal);
+            signalServer.send(JSON.stringify({
+                forId  : theirId,
+                fromId : myId,
+                signal
+            }));
+        });
+        peer.on('stream', (theirStream) => {
+            dispatch({
+                type   : 'STREAMS_ADD',
+                id     : theirId,
+                stream : theirStream
+            });
+        });
+    }
+    if (!initiator) {
+        console.log(`receiving signal from ${theirId}`);
+        peer.signal(receiveSignal);
+    }
+
+    if (isNewPeer) {
+        return {
+            ...state,
+            peers : {
+                ...peers,
+                [theirId] : peer
+            }
+        };
+    }
+    return state;
+}
+
+// This reducer is not quite a pure function and I'm not sorry about it.
+// The PEER_SIGNAL action will sometimes not mutate state but just call peer.signal().
+// Basically I'm hijacking the reducer to get the current state
+// when a message is received from the server.
 export default function reducer(state, action) {
     console.log('ACTION', action);
-    const { peers, streams } = state;
+    const { streams } = state;
     switch (action.type) {
-        case 'MY_STREAM_SET':
+        case 'MY_STREAM_SET': {
+            replacePeerStreams(state, action);
             return {
                 ...state,
                 myStream : action.stream
             };
-        case 'PEER_RELAY': {
-            const { id } = action;
-            relayConnections(peers, id);
-            return state;
         }
-        case 'PEER_SEND': {
-            const { id, data } = action;
-            peerSendJSON(peers[id], data);
-            return state;
-        }
-        case 'PEER_SIGNAL': {
-            const { id, signal } = action;
-            peers[id].signal(signal);
-            return state;
-        }
-        case 'PEERS_ADD':
+        case 'PEER_SIGNAL':
+            return handleSignal(state, action)
+        case 'SIGNAL_SERVER_SET':
             return {
                 ...state,
-                peers : {
-                    ...peers,
-                    // This ID should match on all machines so the initiator
-                    // can relay signals between invitees automatically.
-                    // It's initially set as Peer._id on the initiator's machine.
-                    [action.id] : action.peer
-                }
+                signalServer : action.signalServer
             };
         case 'STREAMS_ADD':
             return {
@@ -61,7 +105,9 @@ export default function reducer(state, action) {
                 ...state,
                 videoElement : action.videoElement
             };
-        default:
+        default: {
+            console.error('Unknown action:', action);
             return state;
+        }
     }
 };

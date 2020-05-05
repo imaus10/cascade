@@ -1,7 +1,7 @@
 import React, { useCallback, useContext } from 'react';
 import { Context } from './Store';
 
-const VideoSquare = ({ isMe, stream }) => {
+const VideoSquare = ({ stream }) => {
     const [, dispatch] = useContext(Context);
     const videoRef = useCallback((node) => {
         if (node) {
