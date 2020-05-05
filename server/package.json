@@ -1,0 +1,16 @@
+{
+  "name": "cascade-server",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Austin Blanton",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "uuid": "^8.0.0",
+    "ws": "^7.2.5"
+  }
+}
