@@ -43,7 +43,7 @@ const GreenRoom = () => {
     }
 
     return (
-        <div className="videos">
+        <main className="videos">
             <div className="my-stream">
                 { myStream && <VideoSquare stream={myStream} /> }
                 <AudioVideoSetup />
@@ -51,7 +51,7 @@ const GreenRoom = () => {
             { Object.entries(streams).map(([id, stream]) => {
                 return <VideoSquare key={id} stream={stream} />;
             }) }
-        </div>
+        </main>
     );
 };
 
