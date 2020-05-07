@@ -8,13 +8,11 @@ server.on('connection', (newClient) => {
     // TODO: group things into rooms.
     const id = uuidv4()
     newClient.id = id;
-    console.log(`new connection opened: ${newClient.id}`);
 
     // The first signal is to broadcast to
     // all the other clients asking for an offer.
     server.clients.forEach((client) => {
         if (client.id !== newClient.id) {
-            console.log(`sending initiate action to ${client.id}`);
             client.send(JSON.stringify({
                 forId  : client.id,
                 fromId : newClient.id,
@@ -25,7 +23,6 @@ server.on('connection', (newClient) => {
 
     // After that, just relay the signals back and forth.
     newClient.on('message', (data) => {
-        console.log('received message:', data);
         const { forId, signal } = JSON.parse(data);
         server.clients.forEach((client) => {
             if (client.id === forId) {

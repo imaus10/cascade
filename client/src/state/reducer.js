@@ -35,9 +35,7 @@ function handleSignal(state, action) {
         }) :
         peers[theirId];
     if (isNewPeer) {
-        console.log(`making new peer ${theirId} (initiator = ${initiator})`);
         peer.on('signal', (signal) => {
-            console.log(`sending signal to ${theirId}`, signal);
             signalServer.send(JSON.stringify({
                 forId  : theirId,
                 fromId : myId,
@@ -53,7 +51,6 @@ function handleSignal(state, action) {
         });
     }
     if (!initiator) {
-        console.log(`receiving signal from ${theirId}`);
         peer.signal(receiveSignal);
     }
 

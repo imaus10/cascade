@@ -23,7 +23,6 @@ const GreenRoom = () => {
             signalServer.addEventListener('error', () => console.log('socket error'));
             signalServer.addEventListener('open', () => console.log('opening socket'));
             signalServer.addEventListener('message', ({ data }) => {
-                console.log('message from server:', data);
                 dispatch({
                     type : 'PEER_SIGNAL',
                     data,
