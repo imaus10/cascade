@@ -20,7 +20,7 @@ const InputOutputSelect = () => {
                 deviceId         : audioInput && {
                     exact : audioInput
                 },
-                echoCancellation : { exact : false },
+                echoCancellation : false,
                 noiseSuppression : { exact : false },
             },
             video : {
@@ -29,7 +29,9 @@ const InputOutputSelect = () => {
                 }
             }
         });
-        const audioCtx = new window.AudioContext();
+        // Safari, what the hell.
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
         const source = audioCtx.createMediaStreamSource(stream);
         source.connect(audioCtx.destination);
         dispatch({
@@ -39,12 +41,17 @@ const InputOutputSelect = () => {
     };
 
     useEffect(() => {
-        const findDevices = async () => {
-            const deviceList = await navigator.mediaDevices.enumerateDevices();
-            setDevices(deviceList);
-        };
-        findDevices();
-    }, []);
+        // On Safari, enumerateDevices only works after getUserMedia is called.
+        // So wait for that to happen before populating the dropdowns.
+        // (Also, missing things even after it's called...)
+        if (myStream) {
+            const findDevices = async () => {
+                const deviceList = await navigator.mediaDevices.enumerateDevices();
+                setDevices(deviceList);
+            };
+            findDevices();
+        }
+    }, [myStream]);
 
     useEffect(() => {
         // Called on the first render
