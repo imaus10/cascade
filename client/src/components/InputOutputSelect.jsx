@@ -16,9 +16,12 @@ const InputOutputSelect = () => {
         }
         const stream = await navigator.mediaDevices.getUserMedia({
             audio : {
-                deviceId : audioInput && {
+                autoGainControl  : { exact : false },
+                deviceId         : audioInput && {
                     exact : audioInput
-                }
+                },
+                echoCancellation : { exact : false },
+                noiseSuppression : { exact : false },
             },
             video : {
                 deviceId : videoInput && {
