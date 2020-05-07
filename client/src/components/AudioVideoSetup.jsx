@@ -18,6 +18,12 @@ const AudioVideoSetup = () => {
         flexDirection : showWelcome ? 'column' : 'row'
     };
 
+    if (!showWelcome) {
+        style.bottom = '0';
+        style.position = 'absolute';
+        style.right = '0';
+    }
+
     return (
         <section style={style}>
             { showWelcome ?

@@ -4,16 +4,11 @@
     position: relative;
 }
 
-.my-stream .io-settings {
-    bottom: 0;
-    position: absolute;
-    right: 0;
-}
-
 .videos {
     display: flex;
+    flex-wrap: wrap;
 }
 
 .videos > * {
-    flex: 1;
+    flex: 0 1 auto;
 }

@@ -73,31 +73,27 @@ const InputOutputSelect = () => {
         ]
     }, [{}, {}, {}]);
 
-    return (
-        <div className="io-settings">
-            { showSetup ? <>
-                { devicesSorted.map((deviceMap, index) => {
-                    const label = kindLabels[index];
-                    const [selectedDeviceId, setSelectedDeviceId] = selectedDevices[index];
-                    return (
-                        <label key={label}>
-                            {label}
-                            <select
-                                onChange={(event) => setSelectedDeviceId(event.target.value)}
-                                value={selectedDeviceId || 'default'}
-                            >
-                                { Object.values(deviceMap).map(({ deviceId, label }) => (
-                                    <option key={deviceId} value={deviceId}>{label}</option>
-                                )) }
-                            </select>
-                        </label>
-                    );
-                }) }
-                <button onClick={() => setShowSetup(false)}>x</button>
-            </> :
-            <button onClick={() => setShowSetup(true)}>Audio/Video settings</button> }
-        </div>
-    );
+    return showSetup ? <>
+        { devicesSorted.map((deviceMap, index) => {
+            const label = kindLabels[index];
+            const [selectedDeviceId, setSelectedDeviceId] = selectedDevices[index];
+            return (
+                <label key={label}>
+                    {label}
+                    <select
+                        onChange={(event) => setSelectedDeviceId(event.target.value)}
+                        value={selectedDeviceId || 'default'}
+                    >
+                        { Object.values(deviceMap).map(({ deviceId, label }) => (
+                            <option key={deviceId} value={deviceId}>{label}</option>
+                        )) }
+                    </select>
+                </label>
+            );
+        }) }
+        <button onClick={() => setShowSetup(false)}>x</button>
+    </> :
+    <button onClick={() => setShowSetup(true)}>Audio/Video settings</button>;
 };
 
 export default InputOutputSelect;
