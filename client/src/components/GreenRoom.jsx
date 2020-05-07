@@ -1,5 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import AudioVideoSetup from './AudioVideoSetup';
+import MySquare from './MySquare';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import './GreenRoom.css';
@@ -43,10 +43,7 @@ const GreenRoom = () => {
 
     return (
         <main className="videos">
-            <div className="my-stream">
-                { myStream && <VideoSquare isMe stream={myStream} /> }
-                <AudioVideoSetup />
-            </div>
+            <MySquare />
             { Object.entries(streams).map(([id, stream]) => {
                 return <VideoSquare key={id} stream={stream} />;
             }) }

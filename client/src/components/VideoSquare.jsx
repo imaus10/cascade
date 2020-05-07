@@ -1,7 +1,7 @@
 import React, { useCallback, useContext } from 'react';
 import { Context } from './Store';
 
-const VideoSquare = ({ isMe, stream }) => {
+const VideoSquare = ({ muted, stream }) => {
     const [, dispatch] = useContext(Context);
     const videoRef = useCallback((node) => {
         if (node) {
@@ -18,7 +18,7 @@ const VideoSquare = ({ isMe, stream }) => {
             });
         }
     }, [stream]);
-    return stream && <video autoPlay muted={isMe} ref={videoRef} />;
+    return stream && <video autoPlay muted={muted} ref={videoRef} />;
 };
 
 export default VideoSquare;

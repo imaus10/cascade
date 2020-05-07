@@ -20,8 +20,9 @@ const AudioVideoSetup = () => {
 
     if (!showWelcome) {
         style.bottom = '0';
+        style.justifyContent = 'space-between';
         style.position = 'absolute';
-        style.right = '0';
+        style.width = '100%';
     }
 
     return (

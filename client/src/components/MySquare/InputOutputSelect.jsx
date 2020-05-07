@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Context } from './Store';
+import { Context } from '../Store';
 
 const InputOutputSelect = () => {
     const [state, dispatch] = useContext(Context);
