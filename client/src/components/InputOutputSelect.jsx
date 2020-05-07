@@ -29,6 +29,9 @@ const InputOutputSelect = () => {
                 }
             }
         });
+        const audioCtx = new window.AudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(audioCtx.destination);
         dispatch({
             type : 'MY_STREAM_SET',
             stream
