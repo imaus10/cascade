@@ -1,9 +1,3 @@
-.my-stream {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
 .videos {
     display: flex;
     flex-wrap: wrap;

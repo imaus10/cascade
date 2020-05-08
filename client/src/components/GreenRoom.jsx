@@ -1,5 +1,4 @@
 import React, { useContext, useEffect } from 'react';
-import MySquare from './MySquare';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import './GreenRoom.css';
@@ -8,7 +7,7 @@ import usePrevious from '../state/use-previous';
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);
     console.log('STATE', state);
-    const { myStream, streams } = state;
+    const { myId, myStream, streams } = state;
     const prevMyStream = usePrevious(myStream);
 
     const params = new URLSearchParams(window.location.search);
@@ -43,7 +42,7 @@ const GreenRoom = () => {
 
     return (
         <main className="videos">
-            <MySquare />
+            <VideoSquare isMe id={myId} stream={myStream} />
             { Object.entries(streams).map(([id, stream]) => {
                 return <VideoSquare key={id} id={id} stream={stream} />;
             }) }
