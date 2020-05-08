@@ -12,26 +12,26 @@ const GreenRoom = () => {
     const prevMyStream = usePrevious(myStream);
 
     const params = new URLSearchParams(window.location.search);
-    const serverURL = params.get('signalServer');
+    const serverURL = params.get('server');
     useEffect(() => {
         // Start the server connection only when myStream is first initiated
         if (myStream && !prevMyStream && serverURL) {
             // We set the server connection here because
             // we need access to dispatch in the event listeners.
-            const signalServer = new WebSocket(serverURL);
-            signalServer.addEventListener('close', () => console.log('closing socket'));
-            signalServer.addEventListener('error', () => console.log('socket error'));
-            signalServer.addEventListener('open', () => console.log('opening socket'));
-            signalServer.addEventListener('message', ({ data }) => {
+            const server = new WebSocket(serverURL);
+            server.addEventListener('close', () => console.log('closing socket'));
+            server.addEventListener('error', () => console.log('socket error'));
+            server.addEventListener('open', () => console.log('opening socket'));
+            server.addEventListener('message', ({ data }) => {
                 dispatch({
-                    type : 'PEER_SIGNAL',
+                    type : 'SERVER_MESSAGE',
                     data,
                     dispatch
                 });
             });
             dispatch({
-                type : 'SIGNAL_SERVER_SET',
-                signalServer
+                type : 'SERVER_SET',
+                server
             });
             // TODO: handle failed connection
         }
@@ -45,7 +45,7 @@ const GreenRoom = () => {
         <main className="videos">
             <MySquare />
             { Object.entries(streams).map(([id, stream]) => {
-                return <VideoSquare key={id} stream={stream} />;
+                return <VideoSquare key={id} id={id} stream={stream} />;
             }) }
         </main>
     );

@@ -1,9 +1,11 @@
 import Peer from 'simple-peer';
 
 export const initialState = {
+    myId         : null,
     myStream     : null,
+    order        : [],
     peers        : {},
-    signalServer : null,
+    server       : null,
     streams      : {},
     videoElement : null
 };
@@ -17,63 +19,85 @@ function replacePeerStreams(state, action) {
     });
 }
 
-function handleSignal(state, action) {
-    const { myStream, peers, signalServer } = state;
+function handleServerMessage(state, action) {
+    const { myStream, peers, server } = state;
     // Sending dispatch in the action is kind of a hack...
     const { data, dispatch } = action;
     const {
         forId  : myId,
         fromId : theirId,
-        signal : receiveSignal
+        order,
+        signal : receiveSignal,
+        type
     } = JSON.parse(data);
-    const initiator = receiveSignal === 'initiate';
-    const isNewPeer = !Object.keys(peers).includes(theirId);
-    const peer = isNewPeer ?
-        new Peer({
-            initiator,
-            stream : myStream,
-        }) :
-        peers[theirId];
-    if (isNewPeer) {
-        peer.on('signal', (signal) => {
-            signalServer.send(JSON.stringify({
-                forId  : theirId,
-                fromId : myId,
-                signal
-            }));
+    if (type === 'id') {
+        dispatch({
+            type : 'MY_ID_SET',
+            id   : myId,
         });
-        peer.on('stream', (theirStream) => {
-            dispatch({
-                type   : 'STREAMS_ADD',
-                id     : theirId,
-                stream : theirStream
+    } else if (type === 'order') {
+        dispatch({
+            type : 'ORDER_SET',
+            order
+        });
+    } else if (type === 'signal') {
+        const initiator = receiveSignal === 'initiate';
+        const isNewPeer = !Object.keys(peers).includes(theirId);
+        const peer = isNewPeer ?
+            new Peer({
+                initiator,
+                stream : myStream,
+            }) :
+            peers[theirId];
+        if (isNewPeer) {
+            peer.on('signal', (signal) => {
+                server.send(JSON.stringify({
+                    type   : 'signal',
+                    forId  : theirId,
+                    fromId : myId,
+                    signal
+                }));
             });
-        });
-    }
-    if (!initiator) {
-        peer.signal(receiveSignal);
+            peer.on('stream', (theirStream) => {
+                dispatch({
+                    type   : 'STREAMS_ADD',
+                    id     : theirId,
+                    stream : theirStream
+                });
+            });
+        }
+
+        if (!initiator) {
+            peer.signal(receiveSignal);
+        }
+
+        if (isNewPeer) {
+            return {
+                ...state,
+                peers : {
+                    ...peers,
+                    [theirId] : peer
+                }
+            };
+        }
     }
 
-    if (isNewPeer) {
-        return {
-            ...state,
-            peers : {
-                ...peers,
-                [theirId] : peer
-            }
-        };
-    }
     return state;
 }
 
 // This reducer is not quite a pure function and I'm not sorry about it.
-// The PEER_SIGNAL action will sometimes not mutate state but just call peer.signal().
+// The SERVER_MESSAGE action will sometimes not mutate state but just call peer.signal().
 // Basically I'm hijacking the reducer to get the current state
 // when a message is received from the server.
 export default function reducer(state, action) {
     console.log('ACTION', action);
     const { streams } = state;
     switch (action.type) {
+        case 'MY_ID_SET':
+            return {
+                ...state,
+                myId : action.id
+            };
         case 'MY_STREAM_SET': {
             replacePeerStreams(state, action);
             return {
@@ -81,12 +105,17 @@ export default function reducer(state, action) {
                 myStream : action.stream
             };
         }
-        case 'PEER_SIGNAL':
-            return handleSignal(state, action)
-        case 'SIGNAL_SERVER_SET':
+        case 'ORDER_SET':
             return {
                 ...state,
-                signalServer : action.signalServer
+                order : action.order
+            };
+        case 'SERVER_MESSAGE':
+            return handleServerMessage(state, action)
+        case 'SERVER_SET':
+            return {
+                ...state,
+                server : action.server
             };
         case 'STREAMS_ADD':
             return {

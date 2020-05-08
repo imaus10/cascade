@@ -1,8 +1,10 @@
 import React, { useCallback, useContext } from 'react';
 import { Context } from './Store';
 
-const VideoSquare = ({ muted, stream }) => {
-    const [, dispatch] = useContext(Context);
+const VideoSquare = ({ id, muted, stream }) => {
+    const [state, dispatch] = useContext(Context);
+    const { order } = state;
+    const flexOrder = order.findIndex((otherId) => id === otherId);
     const videoRef = useCallback((node) => {
         if (node) {
             if ('srcObject' in node) {
@@ -18,7 +20,7 @@ const VideoSquare = ({ muted, stream }) => {
             });
         }
     }, [stream]);
-    return stream && <video autoPlay muted={muted} ref={videoRef} />;
+    return stream && <video autoPlay muted={muted} ref={videoRef} style={{ order : flexOrder }} />;
 };
 
 export default VideoSquare;
