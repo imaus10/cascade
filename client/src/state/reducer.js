@@ -51,12 +51,12 @@ function handleServerMessage(state, action) {
             peers[theirId];
         if (isNewPeer) {
             peer.on('signal', (signal) => {
-                server.send(JSON.stringify({
+                sendToServer(server, {
                     type   : 'signal',
                     forId  : theirId,
                     fromId : myId,
                     signal
-                }));
+                });
             });
             peer.on('stream', (theirStream) => {
                 dispatch({
@@ -85,13 +85,17 @@ function handleServerMessage(state, action) {
     return state;
 }
 
+function sendToServer(server, data) {
+    server.send(JSON.stringify(data));
+}
+
 // This reducer is not quite a pure function and I'm not sorry about it.
 // The SERVER_MESSAGE action will sometimes not mutate state but just call peer.signal().
 // Basically I'm hijacking the reducer to get the current state
 // when a message is received from the server.
 export default function reducer(state, action) {
     console.log('ACTION', action);
-    const { streams } = state;
+    const { myId, order, server, streams } = state;
     switch (action.type) {
         case 'MY_ID_SET':
             return {
@@ -104,6 +108,14 @@ export default function reducer(state, action) {
                 ...state,
                 myStream : action.stream
             };
+        }
+        case 'ORDER_SEND': {
+            sendToServer(server, {
+                type   : 'order',
+                fromId : myId,
+                order
+            });
+            return state;
         }
         case 'ORDER_SET':
             return {

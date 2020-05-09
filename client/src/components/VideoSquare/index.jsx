@@ -32,6 +32,9 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     });
     const [, connectDrop] = useDrop({
         accept : 'participant',
+        drop   : (item) => {
+            dispatch({ type : 'ORDER_SEND' });
+        },
         hover  : ({ id : hoveredOverId }) => {
             if (hoveredOverId !== id) {
                 const myIndex = order.indexOf(id);
