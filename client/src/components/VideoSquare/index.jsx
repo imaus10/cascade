@@ -52,10 +52,10 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const number = order.findIndex((otherId) => id === otherId) + 1;
-    const row = Math.ceil(number / numColumns);
+    const cascadeOrder = order.findIndex((otherId) => id === otherId) + 1;
+    const row = Math.ceil(cascadeOrder / numColumns);
     const numBeforeRow = (row - 1) * numColumns;
-    const col = number - numBeforeRow;
+    const col = cascadeOrder - numBeforeRow;
     const style = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
@@ -72,7 +72,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         <div ref={dndRef} style={style}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
-            { stream && <span style={numberStyle}>{number}</span> }
+            { stream && <span style={numberStyle}>{cascadeOrder}</span> }
         </div>
     );
 };
