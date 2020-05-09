@@ -5,7 +5,7 @@ const InputOutputSelect = () => {
     const [state, dispatch] = useContext(Context);
     const { myStream, videoElements } = state;
     const [devices, setDevices] = useState([]);
-    const [showSetup, setShowSetup] = useState(true);
+    const [showSetup, setShowSetup] = useState(false);
     const [audioInput, setAudioInput] = useState(null);
     const [audioOutput, setAudioOutput] = useState(null);
     const [videoInput, setVideoInput] = useState(null);
