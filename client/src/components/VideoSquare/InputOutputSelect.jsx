@@ -3,7 +3,7 @@ import { Context } from '../Store';
 
 const InputOutputSelect = () => {
     const [state, dispatch] = useContext(Context);
-    const { myStream, videoElement } = state;
+    const { myStream, videoElements } = state;
     const [devices, setDevices] = useState([]);
     const [showSetup, setShowSetup] = useState(true);
     const [audioInput, setAudioInput] = useState(null);
@@ -44,14 +44,14 @@ const InputOutputSelect = () => {
         // On Safari, enumerateDevices only works after getUserMedia is called.
         // So wait for that to happen before populating the dropdowns.
         // (Also, missing things even after it's called...)
-        if (myStream) {
+        if (myStream && showSetup) {
             const findDevices = async () => {
                 const deviceList = await navigator.mediaDevices.enumerateDevices();
                 setDevices(deviceList);
             };
             findDevices();
         }
-    }, [myStream]);
+    }, [myStream, showSetup]);
 
     useEffect(() => {
         // Called on the first render
@@ -60,10 +60,11 @@ const InputOutputSelect = () => {
     }, [audioInput, videoInput]);
 
     useEffect(() => {
-        if (videoElement && audioOutput) {
-            videoElement.setSinkId(audioOutput);
+        const nodes = Object.values(videoElements);
+        if (nodes.length && audioOutput) {
+            nodes.setSinkId(audioOutput);
         }
-    }, [audioOutput, videoElement]);
+    }, [audioOutput, videoElements]);
 
     const kinds = ['audioinput', 'audiooutput', 'videoinput'];
     const kindLabels = ['Audio Input', 'Audio Output', 'Video Input'];
@@ -88,6 +89,8 @@ const InputOutputSelect = () => {
 
     return showSetup ? <>
         { devicesSorted.map((deviceMap, index) => {
+            const devicesOfType = Object.values(deviceMap);
+            if (devicesOfType.length === 0) return null;
             const label = kindLabels[index];
             const [selectedDeviceId, setSelectedDeviceId] = selectedDevices[index];
             return (
@@ -97,7 +100,7 @@ const InputOutputSelect = () => {
                         onChange={(event) => setSelectedDeviceId(event.target.value)}
                         value={selectedDeviceId || 'default'}
                     >
-                        { Object.values(deviceMap).map(({ deviceId, label }) => (
+                        { devicesOfType.map(({ deviceId, label }) => (
                             <option key={deviceId} value={deviceId}>{label}</option>
                         )) }
                     </select>

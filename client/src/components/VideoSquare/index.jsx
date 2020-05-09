@@ -19,6 +19,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
             if (isMe) {
                 dispatch({
                     type         : 'VIDEO_ELEMENT_SET',
+                    id,
                     videoElement : node
                 });
             }
