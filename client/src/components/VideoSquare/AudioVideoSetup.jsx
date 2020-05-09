@@ -12,17 +12,17 @@ const AudioVideoSetup = () => {
         </button>
     </>;
 
+    const afterWelcomeStyles = {
+        bottom         : 0,
+        justifyContent : 'space-between',
+        position       : 'absolute'
+    };
     const style = {
         alignItems    : 'center',
         display       : 'flex',
-        flexDirection : showWelcome ? 'column' : 'row'
+        flexDirection : showWelcome ? 'column' : 'row',
+        ...(showWelcome ? {} : afterWelcomeStyles)
     };
-
-    if (!showWelcome) {
-        style.bottom = '0';
-        style.justifyContent = 'space-between';
-        style.position = 'absolute';
-    }
 
     return (
         <section style={style}>
