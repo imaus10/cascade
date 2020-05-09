@@ -1,10 +1,12 @@
-import React, { useCallback, useContext } from 'react';
+import React, { useCallback, useContext, useRef } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import { Context } from '../Store';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
     const { order } = state;
+
     const videoRef = useCallback((node) => {
         if (node) {
             if ('srcObject' in node) {
@@ -23,6 +25,30 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         }
     }, [stream]);
 
+    const dndRef = useRef(null);
+    const [{ isDragging }, connectDrag] = useDrag({
+        item    : { id, type : 'participant' },
+        collect : (monitor) => ({ isDragging : monitor.isDragging() })
+    });
+    const [, connectDrop] = useDrop({
+        accept : 'participant',
+        hover  : ({ id : hoveredOverId }) => {
+            if (hoveredOverId !== id) {
+                const myIndex = order.indexOf(id);
+                const theirIndex = order.indexOf(hoveredOverId);
+                const newOrder = [...order];
+                newOrder[myIndex] = hoveredOverId;
+                newOrder[theirIndex] = id;
+                dispatch({
+                    type  : 'ORDER_SET',
+                    order : newOrder
+                });
+            }
+        }
+    });
+    connectDrag(dndRef);
+    connectDrop(dndRef);
+
     const number = order.findIndex((otherId) => id === otherId) + 1;
     const row = Math.ceil(number / numColumns);
     const numBeforeRow = (row - 1) * numColumns;
@@ -30,6 +56,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const style = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
+        opacity    : isDragging ? 0.5 : 1,
         position   : 'relative'
     };
     const numberStyle = {
@@ -39,7 +66,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     };
 
     return (
-        <div style={style}>
+        <div ref={dndRef} style={style}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
             { stream && <span style={numberStyle}>{number}</span> }
