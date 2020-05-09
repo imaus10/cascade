@@ -2,20 +2,19 @@ const { v4 : uuidv4 } = require('uuid');
 const WebSocket = require('ws');
 
 const server = new WebSocket.Server({ port : 8080 });
+let order = [];
 
 server.on('connection', (newClient) => {
     // For now, everybody's in one room.
     // TODO: group things into rooms.
     const id = uuidv4()
     newClient.id = id;
-    newClient.order = server.clients.length;
+    order.push(id);
     newClient.send(JSON.stringify({
         type  : 'id',
         forId : newClient.id,
     }));
 
-    const order = [...server.clients].sort((client1, client2) => client1.order - client2.order)
-                                     .map((client) => client.id);
     server.clients.forEach((client) => {
         // Broadcast the new order of participants
         client.send(JSON.stringify({
@@ -31,16 +30,36 @@ server.on('connection', (newClient) => {
                 signal : 'initiate'
             }));
         }
-
     });
 
     // After that, just relay the signals back and forth.
     newClient.on('message', (data) => {
-        const { forId, signal } = JSON.parse(data);
+        const {
+            forId,
+            fromId,
+            order : newOrder,
+            type
+        } = JSON.parse(data);
+
+        // Save new ordering in case new participants join
+        // after some reordering has occurred.
+        if (type === 'order') {
+            order = newOrder;
+        }
+
         server.clients.forEach((client) => {
-            if (client.id === forId) {
-                client.send(data);
+            if (forId) {
+                // Send to just one client
+                if (client.id === forId) {
+                    client.send(data);
+                }
+            } else {
+                // If forId is not set, broadcast to all other clients
+                if (client.id !== fromId) {
+                    client.send(data);
+                }
             }
+
         });
     });
 
