@@ -2,7 +2,7 @@ import React, { useCallback, useContext } from 'react';
 import AudioVideoSetup from './AudioVideoSetup';
 import { Context } from '../Store';
 
-const VideoSquare = ({ id, isMe, stream }) => {
+const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
     const { order } = state;
     const videoRef = useCallback((node) => {
@@ -24,14 +24,14 @@ const VideoSquare = ({ id, isMe, stream }) => {
     }, [stream]);
 
     const number = order.findIndex((otherId) => id === otherId) + 1;
+    const row = Math.ceil(number / numColumns);
+    const numBeforeRow = (row - 1) * numColumns;
+    const col = number - numBeforeRow;
     const style = {
-        order    : number,
-        position : 'relative'
+        gridColumn : `${col} / span 1`,
+        gridRow    : `${row} / span 1`,
+        position   : 'relative'
     };
-    if (isMe) {
-        style.display = 'flex';
-        style.flexDirection = 'column';
-    }
     const numberStyle = {
         left     : 0,
         position : 'absolute',

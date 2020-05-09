@@ -11,7 +11,7 @@ server.on('connection', (newClient) => {
     newClient.order = server.clients.length;
     newClient.send(JSON.stringify({
         type  : 'id',
-        forId : newClient.id
+        forId : newClient.id,
     }));
 
     const order = [...server.clients].sort((client1, client2) => client1.order - client2.order)

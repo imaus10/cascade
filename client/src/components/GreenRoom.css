@@ -1,8 +1,0 @@
-.videos {
-    display: flex;
-    flex-wrap: wrap;
-}
-
-.videos > * {
-    flex: 0 1 auto;
-}

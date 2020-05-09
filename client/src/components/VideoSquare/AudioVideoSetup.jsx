@@ -22,7 +22,6 @@ const AudioVideoSetup = () => {
         style.bottom = '0';
         style.justifyContent = 'space-between';
         style.position = 'absolute';
-        style.width = '100%';
     }
 
     return (
