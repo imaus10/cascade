@@ -4,10 +4,20 @@ const WebSocket = require('ws');
 const server = new WebSocket.Server({ port : 8080 });
 let order = [];
 
+function broadcastOrder() {
+    server.clients.forEach((client) => {
+        client.send(JSON.stringify({
+            type : 'order',
+            order
+        }));
+    });
+}
+
 server.on('connection', (newClient) => {
     // For now, everybody's in one room.
     // TODO: group things into rooms.
     const id = uuidv4()
+    console.log(`opening ${id}`);
     newClient.id = id;
     order.push(id);
     newClient.send(JSON.stringify({
@@ -15,14 +25,12 @@ server.on('connection', (newClient) => {
         forId : newClient.id,
     }));
 
+    // Broadcast the new order of participants,
+    // including the new client ID.
+    broadcastOrder();
     server.clients.forEach((client) => {
-        // Broadcast the new order of participants
-        client.send(JSON.stringify({
-            type : 'order',
-            order
-        }));
         if (client.id !== newClient.id) {
-            // Broadcast to all the other clients asking for an offer.
+            // Broadcast to all the other clients asking for an offer signal.
             client.send(JSON.stringify({
                 type   : 'signal',
                 forId  : client.id,
@@ -54,14 +62,20 @@ server.on('connection', (newClient) => {
                     client.send(data);
                 }
             } else {
-                // If forId is not set, broadcast to all other clients
+                // Broadcast to all other clients
                 if (client.id !== fromId) {
                     client.send(data);
                 }
             }
-
         });
     });
 
-    // TODO: error handling, closing connections, etc.
+    newClient.on('close', () => {
+        console.log(`closing ${newClient.id}`);
+        const startIndex = order.indexOf(newClient.id);
+        order.splice(startIndex, 1);
+        broadcastOrder();
+    });
+
+    // TODO: error handling, etc.
 });
