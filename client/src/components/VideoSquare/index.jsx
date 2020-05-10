@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
+import CascadeNumber from './CascadeNumber';
 import { Context } from '../Store';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
@@ -53,27 +54,23 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const cascadeOrder = order.findIndex((otherId) => id === otherId) + 1;
-    const row = Math.ceil(cascadeOrder / numColumns);
+    const orderNumber = order.findIndex((otherId) => id === otherId) + 1;
+    const row = Math.ceil(orderNumber / numColumns);
     const numBeforeRow = (row - 1) * numColumns;
-    const col = cascadeOrder - numBeforeRow;
-    const style = {
+    const col = orderNumber - numBeforeRow;
+    const gridStyle = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
         position   : 'relative'
     };
-    const numberStyle = {
-        left     : 0,
-        position : 'absolute',
-        top      : 0
-    };
+
 
     return (
-        <div ref={dndRef} style={style}>
+        <div ref={dndRef} style={gridStyle}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
-            { stream && <span style={numberStyle}>{cascadeOrder}</span> }
+            <CascadeNumber orderNumber={orderNumber} />
         </div>
     );
 };
