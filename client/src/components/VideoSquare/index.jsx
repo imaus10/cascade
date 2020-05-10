@@ -6,7 +6,7 @@ import { Context } from '../Store';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
-    const { order } = state;
+    const { iAmInitiator, order } = state;
 
     const videoRef = useCallback((node) => {
         if (node) {
@@ -25,12 +25,10 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         }
     }, [stream]);
 
-    const orderNumber = order.findIndex((otherId) => id === otherId) + 1;
-    const initiator = orderNumber === 1;
     const dndRef = useRef(null);
     const [{ isDragging }, connectDrag] = useDrag({
         item    : { id, type : 'participant' },
-        canDrag : () => initiator,
+        canDrag : () => iAmInitiator,
         collect : (monitor) => ({ isDragging : monitor.isDragging() })
     });
     const [, connectDrop] = useDrop({
@@ -55,6 +53,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
+    const orderNumber = order.findIndex((otherId) => id === otherId) + 1;
     const row = Math.ceil(orderNumber / numColumns);
     const numBeforeRow = (row - 1) * numColumns;
     const col = orderNumber - numBeforeRow;
