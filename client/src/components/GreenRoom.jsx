@@ -6,7 +6,7 @@ import usePrevious from '../state/use-previous';
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);
     console.log('STATE', state);
-    const { myId, myStream, order, streams } = state;
+    const { iAmInitiator, myId, myStream, order, streams } = state;
     const prevMyStream = usePrevious(myStream);
 
     const params = new URLSearchParams(window.location.search);
@@ -50,20 +50,24 @@ const GreenRoom = () => {
     const rowPct = 100 / rows;
     const gridStyles = {
         display             : 'grid',
+        flex                : 1, // Fill the space above nav
         gridTemplateColumns : `repeat(${cols}, ${colPct}%)`,
         gridTemplateRows    : `repeat(${cols}, ${rowPct}%)`,
-        height              : '100%',
-        // justifyItems        : 'center' // div is larger than video width...
     };
 
-    return (
-        <main className="videos" style={gridStyles}>
+    const streamEntries = Object.entries(streams);
+    return <>
+        <main style={gridStyles}>
             <VideoSquare isMe id={myId} numColumns={cols} stream={myStream} />
-            { Object.entries(streams).map(([id, stream]) => {
+            { streamEntries.map(([id, stream]) => {
                 return <VideoSquare key={id} id={id} numColumns={cols} stream={stream} />;
             }) }
         </main>
-    );
+        <nav>
+            { iAmInitiator && streams.length > 0 &&
+                <button className="big-go-button">GO</button> }
+        </nav>
+    </>;
 };
 
 export default GreenRoom;
