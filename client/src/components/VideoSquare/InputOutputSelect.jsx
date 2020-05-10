@@ -1,6 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
 
+// Safari, what the hell.
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
 const InputOutputSelect = () => {
     const [state, dispatch] = useContext(Context);
     const { myStream, videoElements } = state;
@@ -29,10 +33,11 @@ const InputOutputSelect = () => {
                 }
             }
         });
-        // Safari, what the hell.
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
+        // Strangely, there is a delay when hearing the audio via the video element.
+        // But the delay is noticeably shorter when using the Web Audio API...
         const source = audioCtx.createMediaStreamSource(stream);
+        // TODO: set output properly. See:
+        // https://stackoverflow.com/questions/41863094/how-to-select-destination-output-device-using-web-audio-api
         source.connect(audioCtx.destination);
         dispatch({
             type : 'MY_STREAM_SET',
