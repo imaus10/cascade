@@ -17,13 +17,11 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
             }
             // The video element must be available elsewhere
             // to set audio output via setSinkId().
-            if (isMe) {
-                dispatch({
-                    type         : 'VIDEO_ELEMENT_SET',
-                    id,
-                    videoElement : node
-                });
-            }
+            dispatch({
+                type         : 'VIDEO_ELEMENT_SET',
+                id,
+                videoElement : node
+            });
         }
     }, [stream]);
 
@@ -66,7 +64,6 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         opacity    : isDragging ? 0.5 : 1,
         position   : 'relative'
     };
-
 
     return (
         <div ref={dndRef} style={gridStyle}>
