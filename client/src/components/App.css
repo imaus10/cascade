@@ -5,11 +5,26 @@
 }
 
 label > * {
-    display: block;
+  display: block;
+}
+
+nav {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
 }
 
 video {
   height: 100%;
+}
+
+.av-setup {
+  align-items: center;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  position: absolute;
 }
 
 .big-go-button {
