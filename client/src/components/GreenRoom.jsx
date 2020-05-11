@@ -32,7 +32,7 @@ const GreenRoom = () => {
             }) }
         </main>
         <nav>
-            { iAmInitiator && streams.length > 0 &&
+            { iAmInitiator && streamEntries.length > 0 &&
                 <button className="big-go-button">GO</button> }
         </nav>
     </>;

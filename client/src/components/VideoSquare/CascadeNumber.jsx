@@ -3,7 +3,7 @@ import { Context } from '../Store';
 
 const CascadeNumber = ({ orderNumber }) => {
     const [state] = useContext(Context);
-    const { myId, stream } = state;
+    const { myId, myStream } = state;
     const numberStyle = {
         alignItems      : 'center',
         backgroundColor : 'white',
@@ -17,7 +17,7 @@ const CascadeNumber = ({ orderNumber }) => {
         top             : '2%',
         width           : '2rem'
     };
-    return stream && myId ? (
+    return myStream && myId ? (
         <span style={numberStyle}>{orderNumber}</span>
     ) : null;
 };
