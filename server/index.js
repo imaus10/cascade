@@ -4,12 +4,40 @@ const WebSocket = require('ws');
 const server = new WebSocket.Server({ port : 8080 });
 let order = [];
 
-function broadcastOrder() {
+function send(client, data, isJSON = true) {
+    const sendData = isJSON ? JSON.stringify(data) : data;
+    client.send(sendData);
+}
+
+function sendToOne(id, data, isJSON = true) {
     server.clients.forEach((client) => {
-        client.send(JSON.stringify({
-            type : 'order',
-            order
-        }));
+        if (client.id === id) {
+            send(client, data, isJSON);
+        }
+    });
+}
+
+function broadcast(data, isJSON = true) {
+    server.clients.forEach((client) => {
+        send(client, data, isJSON);
+    });
+}
+
+function broadcastExcept(exceptId, dataOrFunction, isJSON = true) {
+    server.clients.forEach((client) => {
+        if (client.id !== exceptId) {
+            const data = typeof dataOrFunction === 'function' ?
+                dataOrFunction(client) :
+                dataOrFunction;
+            send(client, data, isJSON);
+        }
+    });
+}
+
+function broadcastOrder() {
+    broadcast({
+        type : 'order',
+        order
     });
 }
 
@@ -20,25 +48,21 @@ server.on('connection', (newClient) => {
     console.log(`opening ${id}`);
     newClient.id = id;
     order.push(id);
-    newClient.send(JSON.stringify({
+    send(newClient, {
         type  : 'id',
         forId : newClient.id,
-    }));
+    });
 
     // Broadcast the new order of participants,
     // including the new client ID.
     broadcastOrder();
-    server.clients.forEach((client) => {
-        if (client.id !== newClient.id) {
-            // Broadcast to all the other clients asking for an offer signal.
-            client.send(JSON.stringify({
-                type   : 'signal',
-                forId  : client.id,
-                fromId : newClient.id,
-                signal : 'initiate'
-            }));
-        }
-    });
+    // Broadcast to all the other clients asking for an offer signal.
+    broadcastExcept(newClient.id, (client) => ({
+        type   : 'signal',
+        forId  : client.id,
+        fromId : newClient.id,
+        signal : 'initiate'
+    }));
 
     // After that, just relay the signals back and forth.
     newClient.on('message', (data) => {
@@ -55,19 +79,12 @@ server.on('connection', (newClient) => {
             order = newOrder;
         }
 
-        server.clients.forEach((client) => {
-            if (forId) {
-                // Send to just one client
-                if (client.id === forId) {
-                    client.send(data);
-                }
-            } else {
-                // Broadcast to all other clients
-                if (client.id !== fromId) {
-                    client.send(data);
-                }
-            }
-        });
+        // forId tells us if it's a specific or broadcast message
+        if (forId) {
+            sendToOne(forId, data, false);
+        } else {
+            broadcastExcept(fromId, data, false);
+        }
     });
 
     newClient.on('close', () => {
