@@ -18,9 +18,11 @@ const ServerProvider = ({ children }) => {
             server.addEventListener('error', () => console.log('socket error'));
             server.addEventListener('open', () => console.log('opening socket'));
             server.addEventListener('message', ({ data }) => {
+                // Messages from the server are simply actions for the reducer.
                 dispatch({
-                    type : 'SERVER_MESSAGE',
-                    data,
+                    ...JSON.parse(data),
+                    // Weird, but we gotta pass this so Peers can trigger
+                    // dispatches in response to events that haven't happened yet
                     dispatch
                 });
             });

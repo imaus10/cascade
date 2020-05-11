@@ -23,12 +23,9 @@ function broadcast(data, isJSON = true) {
     });
 }
 
-function broadcastExcept(exceptId, dataOrFunction, isJSON = true) {
+function broadcastExcept(exceptId, data, isJSON = true) {
     server.clients.forEach((client) => {
         if (client.id !== exceptId) {
-            const data = typeof dataOrFunction === 'function' ?
-                dataOrFunction(client) :
-                dataOrFunction;
             send(client, data, isJSON);
         }
     });
@@ -36,7 +33,7 @@ function broadcastExcept(exceptId, dataOrFunction, isJSON = true) {
 
 function broadcastOrder() {
     broadcast({
-        type : 'order',
+        type : 'ORDER_SET',
         order
     });
 }
@@ -49,20 +46,18 @@ server.on('connection', (newClient) => {
     newClient.id = id;
     order.push(id);
     send(newClient, {
-        type  : 'id',
-        forId : newClient.id,
+        type : 'MY_ID_SET',
+        id   : newClient.id,
     });
 
     // Broadcast the new order of participants,
     // including the new client ID.
     broadcastOrder();
     // Broadcast to all the other clients asking for an offer signal.
-    broadcastExcept(newClient.id, (client) => ({
-        type   : 'signal',
-        forId  : client.id,
-        fromId : newClient.id,
-        signal : 'initiate'
-    }));
+    broadcastExcept(newClient.id, {
+        type : 'PEERS_NEW',
+        id   : newClient.id
+    });
 
     // After that, just relay the signals back and forth.
     newClient.on('message', (data) => {
@@ -75,7 +70,8 @@ server.on('connection', (newClient) => {
 
         // Save new ordering in case new participants join
         // after some reordering has occurred.
-        if (type === 'order') {
+        // (Or a connection gets dropped and then they come back...)
+        if (type === 'ORDER_SET') {
             order = newOrder;
         }
 

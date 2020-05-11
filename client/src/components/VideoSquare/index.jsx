@@ -5,7 +5,7 @@ import { Context } from '../Store';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
-    const { iAmInitiator, order } = state;
+    const { iAmInitiator, myId, order } = state;
 
     const videoRef = useCallback((node) => {
         if (node) {
@@ -33,7 +33,14 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [, connectDrop] = useDrop({
         accept : 'participant',
         drop   : (item) => {
-            dispatch({ type : 'ORDER_SEND' });
+            dispatch({
+                type       : 'SERVER_SEND',
+                sendAction : {
+                    type   : 'ORDER_SET',
+                    fromId : myId,
+                    order,
+                }
+            });
         },
         hover  : ({ id : hoveredOverId }) => {
             if (hoveredOverId !== id) {

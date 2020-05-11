@@ -1,4 +1,4 @@
-import { handleServerMessage, sendToServer } from './server-actions';
+import { handlePeerSignal, makeNewPeer } from './peer-actions';
 
 export const initialState = {
     // The initiator is whoever is in the first spot.
@@ -33,12 +33,13 @@ function replacePeerStreams(state, action) {
 }
 
 // This reducer is not quite a pure function and I'm not sorry about it.
-// The SERVER_MESSAGE action will sometimes not mutate state but just call peer.signal().
-// Basically I'm hijacking the reducer to get the current state
-// when a message is received from the server.
+// Some actions will not mutate state but just
+// message the server, send data to Peers, etc.
+// Basically I'm hijacking the reducer to get
+// the current state in response to events.
 export default function reducer(state, action) {
     console.log('ACTION', action);
-    const { myId, order, server, streams } = state;
+    const { myId, peers, server, streams } = state;
     switch (action.type) {
         case 'MY_ID_SET':
             return {
@@ -52,14 +53,6 @@ export default function reducer(state, action) {
                 myStream : action.stream
             };
         }
-        case 'ORDER_SEND': {
-            sendToServer(server, {
-                type   : 'order',
-                fromId : myId,
-                order
-            });
-            return state;
-        }
         case 'ORDER_SET': {
             const { order : newOrder } = action;
             const myOrderIndex = newOrder.findIndex((otherId) => myId === otherId);
@@ -70,8 +63,28 @@ export default function reducer(state, action) {
                 order : newOrder
             };
         }
-        case 'SERVER_MESSAGE':
-            return handleServerMessage(state, action)
+        case 'PEER_SIGNAL': {
+            handlePeerSignal(state, action);
+            return state;
+        }
+        case 'PEERS_ADD':
+            return {
+                ...state,
+                peers : {
+                    ...peers,
+                    [action.id] : action.peer
+                }
+            };
+        case 'PEERS_NEW': {
+            const { dispatch, id : newId} = action;
+            // Makes the initiator peer and dispatches PEERS_ADD
+            makeNewPeer(true, newId, state, dispatch);
+            return state;
+        }
+        case 'SERVER_SEND': {
+            server.send(JSON.stringify(action.sendAction));
+            return state;
+        }
         case 'SERVER_SET':
             return {
                 ...state,
