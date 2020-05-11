@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
-import CascadeNumber from './CascadeNumber';
 import { Context } from '../Store';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
@@ -68,7 +67,7 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         <div ref={dndRef} style={gridStyle}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
-            <CascadeNumber orderNumber={orderNumber} />
+            { orderNumber > 0 && <span className="order-number">{orderNumber}</span> }
         </div>
     );
 };
