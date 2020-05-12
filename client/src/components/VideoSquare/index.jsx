@@ -1,14 +1,17 @@
 import React, { useCallback, useContext, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
+import Countdown from './Countdown';
 import { Context } from '../Store';
+import { MODES } from '../../state/reducer';
 import usePrevious from '../../state/use-previous';
 
-const VideoSquare = ({ id, isMe, numColumns, stream }) => {
+const VideoSquare = ({ id, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
-    const { audioOutput, iAmInitiator, myId, order } = state;
+    const { audioOutput, iAmInitiator, mode, myId, order } = state;
+    const isMe = id === myId;
     const prevStream = usePrevious(stream);
-    const prevAudioOutput = usePrevious(audioOutput)
+    const prevAudioOutput = usePrevious(audioOutput);
 
     const videoRef = useCallback((node) => {
         if (node) {
@@ -72,14 +75,21 @@ const VideoSquare = ({ id, isMe, numColumns, stream }) => {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
-        position   : 'relative'
+    };
+    const orderNumberStyle = {
+        backgroundColor : mode === MODES.CASCADE_STANDBY ? 'yellow' : (
+            mode === MODES.CASCADE_RECORDING ? 'red' : 'green'
+        )
     };
 
     return (
-        <div ref={dndRef} style={gridStyle}>
+        <div ref={dndRef} className="video-draggable" style={gridStyle}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
-            { orderNumber > 0 && <span className="order-number">{orderNumber}</span> }
+            { orderNumber > 0 &&
+                <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
+            { mode === MODES.CASCADE_STANDBY && isMe && iAmInitiator &&
+                <Countdown /> }
         </div>
     );
 };

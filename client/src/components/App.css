@@ -1,4 +1,5 @@
 #root {
+  align-items: center;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -14,10 +15,6 @@ nav {
   flex-direction: column;
 }
 
-video {
-  height: 100%;
-}
-
 .av-setup {
   align-items: center;
   bottom: 0;
@@ -29,14 +26,11 @@ video {
 
 .big-go-button {
   font-size: 2rem;
-  height: 4rem;
   padding: 0;
-  width: 4rem;
 }
 
 .order-number {
   align-items: center;
-  background-color: white;
   border: 1px solid black;
   border-radius: 50%;
   display: flex;
@@ -46,4 +40,30 @@ video {
   position: absolute;
   top: 2%;
   width: 2rem;
+}
+
+.video-grid {
+  display: grid;
+  flex: 1; /* fill the space above nav */
+  width: 100%;
+}
+
+.video-grid .video-draggable {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.video-grid .video-draggable video {
+  height: 100%;
+  max-width: 100%;
+}
+
+.video-grid .video-draggable .countdown {
+  color: yellow;
+  font-size: 15rem;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
