@@ -7,23 +7,26 @@ const audioCtx = new AudioContext();
 
 const AudioVideoSetup = () => {
     const [state, dispatch] = useContext(Context);
-    const { myStream, videoElements } = state;
+    const { audioOutput, myStream, peers } = state;
     const [devices, setDevices] = useState([]);
     const [showSetup, setShowSetup] = useState(false);
     const [audioInput, setAudioInput] = useState(null);
-    const [audioOutput, setAudioOutput] = useState(null);
     const [videoInput, setVideoInput] = useState(null);
+    const setAudioOutput = (deviceId) => {
+        dispatch({
+            type : 'AUDIO_OUTPUT_SET',
+            deviceId
+        });
+    }
 
     const setStream = async () => {
-        if (myStream) {
-            myStream.getTracks().forEach((track) => track.stop());
-        }
         const stream = await navigator.mediaDevices.getUserMedia({
             audio : {
-                autoGainControl  : { exact : false },
                 deviceId         : audioInput && {
                     exact : audioInput
                 },
+                // These cause latency
+                autoGainControl  : { exact : false },
                 echoCancellation : false,
                 noiseSuppression : { exact : false },
             },
@@ -33,8 +36,16 @@ const AudioVideoSetup = () => {
                 }
             }
         });
+        if (myStream) {
+            myStream.getTracks().forEach((track) => track.stop());
+            Object.values(peers).forEach((peer) => {
+                peer.removeStream(myStream)
+                peer.addStream(stream);
+            });
+        }
         // Strangely, there is a delay when hearing the audio via the video element.
         // But the delay is noticeably shorter when using the Web Audio API...
+        // (But only in Chrome?)
         const source = audioCtx.createMediaStreamSource(stream);
         // TODO: set output properly. See:
         // https://stackoverflow.com/questions/41863094/how-to-select-destination-output-device-using-web-audio-api
@@ -63,13 +74,6 @@ const AudioVideoSetup = () => {
         // (and any time audioInput or videoInput change)
         setStream();
     }, [audioInput, videoInput]);
-
-    useEffect(() => {
-        const nodes = Object.values(videoElements);
-        if (nodes.length && audioOutput) {
-            nodes.setSinkId(audioOutput);
-        }
-    }, [audioOutput, videoElements]);
 
     const kinds = ['audioinput', 'audiooutput', 'videoinput'];
     const kindLabels = ['Audio Input', 'Audio Output', 'Video Input'];

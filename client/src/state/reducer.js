@@ -1,6 +1,8 @@
 import { handlePeerSignal, makeNewPeer } from './peer-actions';
 
 export const initialState = {
+    // This needs to be stored here so all video elements output sound to the same place.
+    audioOutput   : null,
     // The initiator is whoever is in the first spot.
     // They have all the power. They get to rearrange the order of the cascade.
     // And they press the big GO button.
@@ -19,18 +21,7 @@ export const initialState = {
     // MediaStream objects for remote peers
     // Keys are the server-generated IDs
     streams       : {},
-    // These have to be stored to set audio output as the dropdown changes
-    videoElements : {}
 };
-
-function replacePeerStreams(state, action) {
-    const { myStream : oldStream, peers } = state;
-    const { stream : newStream } = action;
-    Object.values(peers).forEach((peer) => {
-        peer.removeStream(oldStream)
-        peer.addStream(newStream);
-    });
-}
 
 // This reducer is not quite a pure function and I'm not sorry about it.
 // Some actions will not mutate state but just
@@ -41,18 +32,21 @@ export default function reducer(state, action) {
     console.log('ACTION', action);
     const { myId, peers, server, streams } = state;
     switch (action.type) {
+        case 'AUDIO_OUTPUT_SET':
+            return {
+                ...state,
+                audioOutput : action.deviceId
+            };
         case 'MY_ID_SET':
             return {
                 ...state,
                 myId : action.id
             };
-        case 'MY_STREAM_SET': {
-            replacePeerStreams(state, action);
+        case 'MY_STREAM_SET':
             return {
                 ...state,
                 myStream : action.stream
             };
-        }
         case 'ORDER_SET': {
             const { order : newOrder } = action;
             const myOrderIndex = newOrder.findIndex((otherId) => myId === otherId);
@@ -97,13 +91,6 @@ export default function reducer(state, action) {
                     ...streams,
                     // This ID matches the peer ID
                     [action.id] : action.stream,
-                }
-            };
-        case 'VIDEO_ELEMENT_SET':
-            return {
-                ...state,
-                videoElements : {
-                    [action.id] : action.videoElement
                 }
             };
         default: {

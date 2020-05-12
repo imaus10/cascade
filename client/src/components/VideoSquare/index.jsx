@@ -2,27 +2,32 @@ import React, { useCallback, useContext, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import { Context } from '../Store';
+import usePrevious from '../../state/use-previous';
 
 const VideoSquare = ({ id, isMe, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
-    const { iAmInitiator, myId, order } = state;
+    const { audioOutput, iAmInitiator, myId, order } = state;
+    const prevStream = usePrevious(stream);
+    const prevAudioOutput = usePrevious(audioOutput)
 
     const videoRef = useCallback((node) => {
         if (node) {
-            if ('srcObject' in node) {
-                node.srcObject = stream;
-            } else {
-                node.src = URL.createObjectURL(stream);
+            if (stream !== prevStream) {
+                if ('srcObject' in node) {
+                    node.srcObject = stream;
+                } else {
+                    node.src = URL.createObjectURL(stream);
+                }
             }
-            // The video element must be available elsewhere
-            // to set audio output via setSinkId().
-            dispatch({
-                type         : 'VIDEO_ELEMENT_SET',
-                id,
-                videoElement : node
-            });
+
+            if (audioOutput && audioOutput !== prevAudioOutput) {
+                // TODO: check if available, alert user if not
+                // (Firefox needs setting enabled)
+                // (Safari is ?)
+                node.setSinkId(audioOutput);
+            }
         }
-    }, [stream]);
+    }, [audioOutput, stream]);
 
     const dndRef = useRef(null);
     const [{ isDragging }, connectDrag] = useDrag({
