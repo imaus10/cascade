@@ -3,7 +3,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
 import { Context } from '../Store';
-import { MODES } from '../../state/reducer';
+import { CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
 import usePrevious from '../../state/use-previous';
 
 const VideoSquare = ({ id, numColumns, stream }) => {
@@ -35,7 +35,7 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     const dndRef = useRef(null);
     const [{ isDragging }, connectDrag] = useDrag({
         item    : { id, type : 'participant' },
-        canDrag : () => iAmInitiator,
+        canDrag : () => iAmInitiator && mode === READY,
         collect : (monitor) => ({ isDragging : monitor.isDragging() })
     });
     const [, connectDrop] = useDrop({
@@ -67,18 +67,25 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const orderNumber = order.findIndex((otherId) => id === otherId) + 1;
-    const row = Math.ceil(orderNumber / numColumns);
-    const numBeforeRow = (row - 1) * numColumns;
-    const col = orderNumber - numBeforeRow;
+    const orderNumber = order.indexOf(id) + 1;
+    const getGridPlacement = () => {
+        if (mode === CASCADE_STANDBY) {
+            return { col : 1, row : 1 };
+        }
+        const row = Math.ceil(orderNumber / numColumns);
+        const numBeforeRow = (row - 1) * numColumns;
+        const col = orderNumber - numBeforeRow;
+        return { col, row };
+    };
+    const { col, row } = getGridPlacement();
     const gridStyle = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
     };
     const orderNumberStyle = {
-        backgroundColor : mode === MODES.CASCADE_STANDBY ? 'yellow' : (
-            mode === MODES.CASCADE_RECORDING ? 'red' : 'green'
+        backgroundColor : mode === CASCADE_STANDBY ? 'yellow' : (
+            mode === CASCADE_RECORDING ? 'red' : 'green'
         )
     };
 
@@ -88,7 +95,7 @@ const VideoSquare = ({ id, numColumns, stream }) => {
             { isMe && <AudioVideoSetup /> }
             { orderNumber > 0 &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
-            { mode === MODES.CASCADE_STANDBY && isMe && iAmInitiator &&
+            { mode === CASCADE_STANDBY && isMe && iAmInitiator &&
                 <Countdown /> }
         </div>
     );

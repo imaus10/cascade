@@ -2,8 +2,8 @@ import React, { useContext, useState } from 'react';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import Welcome from './Welcome';
-import startCascade from '../state/cascade-actions';
-import { MODES } from '../state/reducer';
+import { startCascade } from '../state/cascade-actions';
+import { READY } from '../state/modes';
 
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);
@@ -15,15 +15,7 @@ const GreenRoom = () => {
         return <Welcome onClick={() => setShowWelcome(false)} />;
     }
 
-    const getOtherStreams = () => {
-        // During standby the streams are paused
-        if (mode === MODES.CASCADE_STANDBY) return {};
-        return streams;
-    };
-    const otherStreams = getOtherStreams();
-
-    // Before connecting to the server, there is still 1 participant!
-    const numParticipants = Object.values(otherStreams).length + 1;
+    const numParticipants = Object.values(streams).length + 1;
     // Add a new row when the number of participants exceeds the perfect square
     // (2-4 partcipants have two columns, 5-9 have three columns, 10-16 have four columns, etc)
     const cols = Math.ceil(Math.sqrt(numParticipants));
@@ -37,13 +29,13 @@ const GreenRoom = () => {
 
     return <>
         <main className="video-grid" style={gridStyles}>
-            { <VideoSquare id={myId} numColumns={cols} stream={myStream} /> }
-            { Object.entries(otherStreams).map(([id, stream]) =>
+            <VideoSquare id={myId} numColumns={cols} stream={myStream} />
+            { Object.entries(streams).map(([id, stream]) =>
                 <VideoSquare key={id} id={id} numColumns={cols} stream={stream} />
             ) }
         </main>
         <nav>
-            { mode === MODES.READY && iAmInitiator && numParticipants > 1 &&
+            { mode === READY && iAmInitiator && numParticipants > 1 &&
                 <button
                     className="big-go-button"
                     onClick={() => startCascade(state, dispatch)}
