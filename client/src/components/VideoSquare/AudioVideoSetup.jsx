@@ -52,6 +52,8 @@ const AudioVideoSetup = () => {
         source.connect(audioCtx.destination);
         dispatch({
             type : 'MY_STREAM_SET',
+            // Need to dispatch in the recorder ondataavailable event listener
+            dispatch,
             stream
         });
     };

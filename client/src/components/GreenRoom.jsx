@@ -8,7 +8,7 @@ import { CASCADE_DONE, CASCADE_RECORDING, READY } from '../state/modes';
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);
     console.log('STATE', state);
-    const { iAmInitiator, mode, myId, myStream, streams } = state;
+    const { files, iAmInitiator, mode, myId, myStream, streams } = state;
     const [showWelcome, setShowWelcome] = useState(true);
 
     if (showWelcome) {
@@ -50,6 +50,16 @@ const GreenRoom = () => {
                     STOP
                 </button> }
         </nav>
+        <aside>
+            { files.map((blobURL, index) =>
+                <a
+                    key={blobURL}
+                    download={`cascade${index + 1}.webm`}
+                    href={blobURL}
+                >
+                    Download cascade {index + 1} video
+                </a>) }
+        </aside>
     </>;
 };
 

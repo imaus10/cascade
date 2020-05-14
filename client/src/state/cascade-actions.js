@@ -38,14 +38,18 @@ export function changeMode(newMode, dispatch) {
         mode : newMode
     });
 
+    const { recorder } = getState();
+
     switch (newMode) {
         case CASCADE_STANDBY:
             stopStreaming();
             break;
         case CASCADE_RECORDING:
             sendCascadeStream();
+            recorder.start();
             break;
         case CASCADE_DONE:
+            recorder.stop();
             resetStreams();
             break;
         default:

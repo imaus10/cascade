@@ -1,8 +1,11 @@
 import { CASCADE_STANDBY, READY, SETUP } from './modes';
+import { makeNewRecorder } from './record-actions';
 
 export const initialState = {
     // This needs to be stored here so all video elements output sound to the same place.
     audioOutput   : null,
+    // Blob URLs of the recorded myStream (not combined with other peers)
+    files         : [],
     // The initiator is whoever is in the first spot.
     // They have all the power. They get to rearrange the order of the cascade.
     // And they press the big GO button.
@@ -17,21 +20,28 @@ export const initialState = {
     // Direct connections to other participants via WebRTC that provide the streams
     // Keys are the server-generated IDs
     peers         : {},
+    // Records myStream during cascade
+    recorder      : null,
     // WebSocket server connection to send the initial WebRTC signals (and a biiiit more after)
     server        : null,
     // MediaStream objects for remote peers
     // Keys are the server-generated IDs
-    streams       : {},
+    streams       : {}
 };
 
 function reducer(state, action) {
     console.log('ACTION', action);
-    const { mode, myId, myStream, peers, streams } = state;
+    const { files, mode, myId, myStream, peers, streams } = state;
     switch (action.type) {
         case 'AUDIO_OUTPUT_SET':
             return {
                 ...state,
                 audioOutput : action.deviceId
+            };
+        case 'FILES_ADD':
+            return {
+                ...state,
+                files : files.concat(action.file)
             };
         case 'MODE_SET': {
             const { mode : newMode } = action;
@@ -55,7 +65,8 @@ function reducer(state, action) {
             return {
                 ...state,
                 mode     : newMode,
-                myStream : action.stream
+                myStream : action.stream,
+                recorder : makeNewRecorder(action.stream, action.dispatch)
             };
         }
         case 'ORDER_SET': {
