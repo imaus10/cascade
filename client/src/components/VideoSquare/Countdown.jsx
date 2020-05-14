@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
+import { changeMode } from '../../state/cascade-actions';
 import { CASCADE_RECORDING } from '../../state/modes';
 
 const Countdown = () => {
@@ -11,10 +12,7 @@ const Countdown = () => {
                 setNumber(number - 1);
             }, 2000);
         } else {
-            dispatch({
-                type : 'MODE_SET',
-                mode : CASCADE_RECORDING
-            });
+            changeMode(CASCADE_RECORDING, dispatch);
         }
     }, [number]);
     return <span className="countdown">{number}</span>

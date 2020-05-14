@@ -1,6 +1,4 @@
-import { READY, SETUP } from './modes';
-import { handleModeChange } from './cascade-actions';
-import { handlePeerSignal, makeNewPeer } from './peer-actions';
+import { CASCADE_STANDBY, READY, SETUP } from './modes';
 
 export const initialState = {
     // This needs to be stored here so all video elements output sound to the same place.
@@ -26,27 +24,26 @@ export const initialState = {
     streams       : {},
 };
 
-// This reducer is not quite a pure function and I'm not sorry about it.
-// Some actions will not mutate state but just
-// message the server, send data to Peers, etc.
-// Basically I'm hijacking the reducer to get
-// the current state in response to events.
-export default function reducer(state, action) {
-    if (typeof action === 'function') {
-        action(state);
-        return state;
-    }
-
+function reducer(state, action) {
     console.log('ACTION', action);
-    const { mode, myId, myStream, peers, server, streams } = state;
+    const { mode, myId, myStream, peers, streams } = state;
     switch (action.type) {
         case 'AUDIO_OUTPUT_SET':
             return {
                 ...state,
                 audioOutput : action.deviceId
             };
-        case 'MODE_SET':
-            return handleModeChange(action.mode, state);
+        case 'MODE_SET': {
+            const { mode : newMode } = action;
+            // When starting the cascade, remove the streams
+            // (which will be stopped shortly)
+            const newStreams = newMode === CASCADE_STANDBY ? {} : streams;
+            return {
+                ...state,
+                mode    : newMode,
+                streams : newStreams
+            };
+        }
         case 'MY_ID_SET':
             return {
                 ...state,
@@ -71,10 +68,6 @@ export default function reducer(state, action) {
                 order : newOrder
             };
         }
-        case 'PEER_SIGNAL': {
-            handlePeerSignal(state, action);
-            return state;
-        }
         case 'PEERS_ADD':
             return {
                 ...state,
@@ -83,16 +76,6 @@ export default function reducer(state, action) {
                     [action.id] : action.peer
                 }
             };
-        case 'PEERS_NEW': {
-            const { dispatch, id : newId} = action;
-            // Makes the initiator peer and dispatches PEERS_ADD
-            makeNewPeer(true, newId, state, dispatch);
-            return state;
-        }
-        case 'SERVER_SEND': {
-            server.send(JSON.stringify(action.sendAction));
-            return state;
-        }
         case 'SERVER_SET':
             return {
                 ...state,
@@ -103,8 +86,7 @@ export default function reducer(state, action) {
                 ...state,
                 streams : {
                     ...streams,
-                    // This ID matches the peer ID
-                    [action.id] : action.stream,
+                    [action.id] : action.stream
                 }
             };
         default: {
@@ -113,3 +95,19 @@ export default function reducer(state, action) {
         }
     }
 };
+
+let evilBoogiemanGlobalState = {};
+export function getState() {
+    return evilBoogiemanGlobalState;
+}
+
+export function serverSend(sendAction) {
+    const { server } = getState();
+    server.send(JSON.stringify(sendAction));
+}
+
+export default function reduceAndSave(state, action) {
+    const newState = reducer(state, action);
+    evilBoogiemanGlobalState = newState;
+    return newState;
+}

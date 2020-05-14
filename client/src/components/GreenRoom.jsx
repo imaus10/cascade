@@ -2,8 +2,8 @@ import React, { useContext, useState } from 'react';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import Welcome from './Welcome';
-import { startCascade } from '../state/cascade-actions';
-import { READY } from '../state/modes';
+import { startCascade, stopCascade } from '../state/cascade-actions';
+import { CASCADE_DONE, CASCADE_RECORDING, READY } from '../state/modes';
 
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);
@@ -35,12 +35,19 @@ const GreenRoom = () => {
             ) }
         </main>
         <nav>
-            { mode === READY && iAmInitiator && numParticipants > 1 &&
+            { [READY, CASCADE_DONE].includes(mode) && iAmInitiator && numParticipants > 1 &&
                 <button
-                    className="big-go-button"
-                    onClick={() => startCascade(state, dispatch)}
+                    className="big-button"
+                    onClick={() => startCascade(dispatch)}
                 >
                     GO
+                </button> }
+            { mode === CASCADE_RECORDING && iAmInitiator &&
+                <button
+                    className="big-button"
+                    onClick={() => stopCascade(dispatch)}
+                >
+                    STOP
                 </button> }
         </nav>
     </>;

@@ -10,3 +10,6 @@ export const CASCADE_STANDBY = 2;
 // This will end for the initiator when they press the DONE button
 // and for everyone else when the stream ends.
 export const CASCADE_RECORDING = 3;
+// After the cascade is finished, restarting connections needs to be handled differently.
+// Upstream peers should only send their video downstream after the downstream peers have finished.
+export const CASCADE_DONE = 4;

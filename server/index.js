@@ -53,11 +53,6 @@ server.on('connection', (newClient) => {
     // Broadcast the new order of participants,
     // including the new client ID.
     broadcastOrder();
-    // Broadcast to all the other clients asking for an offer signal.
-    broadcastExcept(newClient.id, {
-        type : 'PEERS_NEW',
-        id   : newClient.id
-    });
 
     // After that, just relay the signals back and forth.
     newClient.on('message', (data) => {

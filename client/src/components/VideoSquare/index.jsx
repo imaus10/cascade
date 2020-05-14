@@ -3,7 +3,8 @@ import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
 import { Context } from '../Store';
-import { CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
+import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
+import { serverSend } from '../../state/reducer';
 import usePrevious from '../../state/use-previous';
 
 const VideoSquare = ({ id, numColumns, stream }) => {
@@ -35,19 +36,16 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     const dndRef = useRef(null);
     const [{ isDragging }, connectDrag] = useDrag({
         item    : { id, type : 'participant' },
-        canDrag : () => iAmInitiator && mode === READY,
+        canDrag : () => iAmInitiator && [READY, CASCADE_DONE].includes(mode),
         collect : (monitor) => ({ isDragging : monitor.isDragging() })
     });
     const [, connectDrop] = useDrop({
         accept : 'participant',
         drop   : (item) => {
-            dispatch({
-                type       : 'SERVER_SEND',
-                sendAction : {
-                    type   : 'ORDER_SET',
-                    fromId : myId,
-                    order,
-                }
+            serverSend({
+                type   : 'ORDER_SET',
+                fromId : myId,
+                order,
             });
         },
         hover  : ({ id : hoveredOverId }) => {
@@ -67,17 +65,10 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const orderNumber = order.indexOf(id) + 1;
-    const getGridPlacement = () => {
-        if (mode === CASCADE_STANDBY) {
-            return { col : 1, row : 1 };
-        }
-        const row = Math.ceil(orderNumber / numColumns);
-        const numBeforeRow = (row - 1) * numColumns;
-        const col = orderNumber - numBeforeRow;
-        return { col, row };
-    };
-    const { col, row } = getGridPlacement();
+    const orderNumber = mode === CASCADE_STANDBY ? 1 : order.indexOf(id) + 1;
+    const row = Math.ceil(orderNumber / numColumns);
+    const numBeforeRow = (row - 1) * numColumns;
+    const col = orderNumber - numBeforeRow;
     const gridStyle = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
