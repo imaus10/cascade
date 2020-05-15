@@ -1,12 +1,6 @@
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from './modes';
+import { gatherLatencyInfo, getNextPeer, sendLatencyInfo } from './peer-actions';
 import { getState, serverSend } from './reducer';
-
-function getNextPeer(state) {
-    const { myId, order, peers } = getState();
-    const nextIndex = order.indexOf(myId) + 1;
-    const nextId = order[nextIndex];
-    return peers[nextId];
-}
 
 function cloneTracks(stream) {
     return stream.getTracks().map((track) => track.clone());
@@ -43,6 +37,7 @@ export function changeMode(newMode, dispatch) {
     switch (newMode) {
         case CASCADE_STANDBY:
             stopStreaming();
+            gatherLatencyInfo();
             break;
         case CASCADE_RECORDING:
             sendCascadeStream();
@@ -51,6 +46,7 @@ export function changeMode(newMode, dispatch) {
         case CASCADE_DONE:
             recorder.stop();
             resetStreams();
+            sendLatencyInfo();
             break;
         default:
     }
