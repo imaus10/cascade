@@ -75,12 +75,12 @@ function makeNewPeer(initiator, newId, dispatch) {
         // Send the ping right back
         if (type === 'ping') {
             peer.send(JSON.stringify({
-                type : 'ping_response',
+                type : 'pong',
                 startTime,
             }));
         }
         // Keep pinging until recording starts
-        if (type === 'ping_response') {
+        if (type === 'pong') {
             const roundTripLatency = Date.now() - startTime;
             latencies.push(roundTripLatency);
             if (mode === CASCADE_STANDBY) {

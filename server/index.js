@@ -63,6 +63,12 @@ server.on('connection', (newClient) => {
             type
         } = JSON.parse(data);
 
+        // Keep the connection alive
+        if (type === 'ping') {
+            send(newClient, { type : 'pong' });
+            return;
+        };
+
         // Save new ordering in case new participants join
         // after some reordering has occurred.
         // (Or a connection gets dropped and then they come back...)

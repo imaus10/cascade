@@ -35,12 +35,18 @@ const ServerProvider = ({ children }) => {
                     case 'PEER_SIGNAL':
                         handlePeerSignal(action, dispatch);
                         break;
+                    case 'pong':
+                        break;
                     default:
                         // Otherwise, messages from the server
                         // are simply actions for the reducer.
                         dispatch(action);
                 }
             });
+            setInterval(() => {
+                // Keep the connection alive
+                server.send(JSON.stringify({ type : 'ping' }));
+            }, 30000);
             dispatch({
                 type : 'SERVER_SET',
                 server
