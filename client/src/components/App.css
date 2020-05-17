@@ -45,6 +45,7 @@ nav {
 .video-grid {
   display: grid;
   flex: 1; /* fill the space above nav */
+  max-height: 100%;
   width: 100%;
 }
 
