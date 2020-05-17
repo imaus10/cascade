@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
-import { changeMode } from '../../state/cascade-actions';
+import { changeMode } from '../../state/actions/cascade';
 import { CASCADE_RECORDING } from '../../state/modes';
 
 const Countdown = () => {

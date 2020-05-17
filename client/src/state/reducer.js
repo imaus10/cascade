@@ -1,5 +1,5 @@
 import { CASCADE_STANDBY, READY, SETUP } from './modes';
-import { makeNewRecorder } from './record-actions';
+import { makeNewRecorder } from './actions/recording';
 
 export const initialState = {
     // This needs to be stored here so all video elements output sound to the same place.

@@ -1,7 +1,7 @@
 import { useContext, useEffect } from 'react';
 import { Context } from './Store';
-import { changeMode } from '../state/cascade-actions';
-import { checkForNewPeers, handlePeerSignal } from '../state/peer-actions';
+import { changeMode } from '../state/actions/cascade';
+import { checkForNewPeers, handlePeerSignal } from '../state/actions/peers';
 import usePrevious from '../state/use-previous';
 
 const ServerProvider = ({ children }) => {

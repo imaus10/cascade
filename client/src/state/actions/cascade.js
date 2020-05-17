@@ -1,6 +1,6 @@
-import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from './modes';
-import { gatherLatencyInfo, getNextPeer, sendLatencyInfo } from './peer-actions';
-import { getState, serverSend } from './reducer';
+import { gatherLatencyInfo, getNextPeer, sendLatencyInfo } from './peers';
+import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
+import { getState, serverSend } from '../reducer';
 
 function cloneTracks(stream) {
     return stream.getTracks().map((track) => track.clone());

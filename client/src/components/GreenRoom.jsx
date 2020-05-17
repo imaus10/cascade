@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import Welcome from './Welcome';
-import { startCascade, stopCascade } from '../state/cascade-actions';
+import { startCascade, stopCascade } from '../state/actions/cascade';
 import { CASCADE_DONE, CASCADE_RECORDING, READY } from '../state/modes';
 
 const GreenRoom = () => {
