@@ -73,10 +73,26 @@ function reducer(state, action) {
             const { order : newOrder } = action;
             const myOrderIndex = newOrder.findIndex((otherId) => myId === otherId);
             const iAmInitiator = myOrderIndex === 0;
+            // If an id has been taken away from the order, remove the peers and streams
+            const [newPeers, newStreams] = newOrder.reduce((accumulator, id) => {
+                if (id === myId) return accumulator;
+                return [
+                    {
+                        ...accumulator[0],
+                        [id] : peers[id]
+                    },
+                    {
+                        ...accumulator[1],
+                        [id] : streams[id]
+                    }
+                ]
+            }, [{}, {}]);
             return {
                 ...state,
                 iAmInitiator,
-                order : newOrder
+                order   : newOrder,
+                peers   : newPeers,
+                streams : newStreams
             };
         }
         case 'PEERS_ADD':
