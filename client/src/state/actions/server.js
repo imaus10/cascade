@@ -1,5 +1,11 @@
 import { changeMode } from './cascade';
 import { checkForNewPeers, handlePeerSignal } from './peers';
+import { getState } from '../reducer';
+
+export function serverSend(sendAction) {
+    const { server } = getState();
+    server.send(JSON.stringify(sendAction));
+}
 
 export function makeServer(serverURL, dispatch) {
     // We set the server connection here because
@@ -34,7 +40,7 @@ export function makeServer(serverURL, dispatch) {
     });
     setInterval(() => {
         // Keep the connection alive
-        server.send(JSON.stringify({ type : 'ping' }));
+        serverSend({ type : 'ping' });
     }, 30000);
     dispatch({
         type : 'SERVER_SET',

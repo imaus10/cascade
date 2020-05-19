@@ -1,7 +1,8 @@
 import Peer from 'simple-peer';
 import { changeMode, cloneMyStream, setStreamsFromCascade } from './cascade';
+import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
-import { getState, serverSend } from '../reducer';
+import { getState } from '../reducer';
 
 export function checkForNewPeers(action, dispatch) {
     const { order : newOrder } = action;

@@ -128,11 +128,6 @@ export function getState() {
     return evilBoogiemanGlobalState;
 }
 
-export function serverSend(sendAction) {
-    const { server } = getState();
-    server.send(JSON.stringify(sendAction));
-}
-
 export default function reduceAndSave(state, action) {
     const newState = reducer(state, action);
     evilBoogiemanGlobalState = newState;

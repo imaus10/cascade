@@ -3,9 +3,9 @@ import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
 import { Context } from '../Store';
-import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
-import { serverSend } from '../../state/reducer';
 import usePrevious from '../../state/use-previous';
+import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
+import { serverSend } from '../../state/actions/server';
 
 const VideoSquare = ({ id, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
