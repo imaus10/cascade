@@ -1,4 +1,5 @@
-import { gatherLatencyInfo, getNextPeer, sendLatencyInfo } from './peers';
+import { getNextPeer } from './peers';
+import { gatherLatencyInfo, setCascadeStartTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -33,7 +34,7 @@ export function changeMode(newMode, dispatch) {
         mode : newMode
     });
 
-    const { recorder } = getState();
+    const { iAmInitiator, recorder } = getState();
 
     switch (newMode) {
         case CASCADE_STANDBY:
@@ -41,13 +42,15 @@ export function changeMode(newMode, dispatch) {
             gatherLatencyInfo();
             break;
         case CASCADE_RECORDING:
+            if (iAmInitiator) {
+                setCascadeStartTime();
+            }
             sendCascadeStream();
             recorder.start();
             break;
         case CASCADE_DONE:
             recorder.stop();
             resetStreams();
-            sendLatencyInfo();
             break;
         default:
     }

@@ -1,5 +1,6 @@
 import Peer from 'simple-peer';
 import { changeMode, cloneMyStream, setStreamsFromCascade } from './cascade';
+import { addLatency, addLocalTimeDifference, setCascadeStartTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -42,6 +43,7 @@ function makeNewPeer(initiator, newId, dispatch) {
         // from all previous peers.
         // Receiving it is a signal to start the cascade.
         if (mode === CASCADE_STANDBY) {
+            setCascadeStartTime();
             setStreamsFromCascade(theirStream, dispatch);
             changeMode(CASCADE_RECORDING, dispatch);
         } else {
@@ -68,13 +70,11 @@ function makeNewPeer(initiator, newId, dispatch) {
     // to reach the next person in the cascade
     peer.on('data', (data) => {
         const { mode } = getState();
-        const { startTime, type, ...rest } = JSON.parse(data.toString());
-        // This will go away when we send it to the server instead
-        if (type === 'latency_info') {
-            printLatencyInfo(rest);
-        }
+        const { startTime, type } = JSON.parse(data.toString());
+
         // Send the ping right back
         if (type === 'ping') {
+            addLocalTimeDifference(startTime)
             peer.send(JSON.stringify({
                 type : 'pong',
                 startTime,
@@ -83,7 +83,7 @@ function makeNewPeer(initiator, newId, dispatch) {
         // Keep pinging until recording starts
         if (type === 'pong') {
             const roundTripLatency = Date.now() - startTime;
-            latencies.push(roundTripLatency);
+            addLatency(roundTripLatency)
             if (mode === CASCADE_STANDBY) {
                 pingPeer(peer);
             }
@@ -113,74 +113,9 @@ export function getNextPeer(state) {
     return peers[nextId];
 }
 
-let latencies = [];
-// This starts a series of pings that lasts from standby until recording starts
-// to get an idea of the latencies between each connection in the cascade.
-// We use it later to stitch together the video.
-export function gatherLatencyInfo() {
-    latencies = [];
-    const nextPeer = getNextPeer();
-    if (nextPeer) {
-        pingPeer(nextPeer);
-    }
-}
-
-function pingPeer(peer) {
+export function pingPeer(peer) {
     peer.send(JSON.stringify({
         type      : 'ping',
         startTime : Date.now()
     }));
-}
-
-function printLatencyInfo(latencyInfo) {
-    const { myId, order } = getState();
-    const { avgPingTime, fromId, numPings, stdDevPingTime, toId } = latencyInfo;
-    const fromOrderNumber = order.indexOf(fromId);
-    const toOrderNumber = order.indexOf(toId);
-    console.log(`latency info from ${fromOrderNumber} to ${toOrderNumber}:`);
-    console.log(`num pings = ${numPings};
-                 std dev = ${stdDevPingTime};
-                 avg rount trip = ${avgPingTime};
-                 est. one-way = ${avgPingTime / 2}`);
-    if (fromId === myId) {
-        console.log(latencies);
-    }
-}
-
-export function sendLatencyInfo() {
-    const { myId, order, peers } = getState();
-
-    // Don't send if you're the end of the cascade
-    if (!getNextPeer()) return;
-
-    const numPings = latencies.length;
-    const pingSum = latencies.reduce((accumulator, pingTime) => accumulator + pingTime, 0);
-    const avgPingTime = pingSum / numPings;
-    const sumOfSquares = latencies.reduce(
-        (accumulator, pingTime) => accumulator + Math.pow(pingTime - avgPingTime, 2),
-        0
-    );
-    const stdDevPingTime = Math.sqrt(sumOfSquares / (numPings - 1));
-    const fromId = myId;
-    const toIndex = order.indexOf(myId) + 1;
-    const toId = order[toIndex];
-    const latencyInfo = {
-        type : 'latency_info',
-        avgPingTime,
-        fromId,
-        numPings,
-        stdDevPingTime,
-        toId
-    };
-
-    // For now, send info to the initiator to print, for manual slicing.
-    // Eventually, we want to send this to the server
-    // with the files to do the automatic syncing.
-    const initiatorId = order[0];
-    if (initiatorId === myId) {
-        printLatencyInfo(latencyInfo);
-    } else {
-        const initiator = peers[initiatorId];
-        initiator.send(JSON.stringify(latencyInfo));
-    }
 }

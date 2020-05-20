@@ -54,13 +54,15 @@ server.on('connection', (newClient) => {
     // including the new client ID.
     broadcastOrder();
 
-    // After that, just relay the signals back and forth.
+    // After that, relay the signals back and forth
+    // (and a few other odds & ends)
     newClient.on('message', (data) => {
         const {
             forId,
             fromId,
             order : newOrder,
-            type
+            type,
+            ...rest
         } = JSON.parse(data);
 
         // Keep the connection alive
@@ -68,6 +70,13 @@ server.on('connection', (newClient) => {
             send(newClient, { type : 'pong' });
             return;
         };
+
+        if (type === 'latency_info') {
+            const orderNumber = order.indexOf(fromId);
+            // TODO: use this for automatic slicing
+            console.log(`Latency info from ${orderNumber}:`, rest);
+            return;
+        }
 
         // Save new ordering in case new participants join
         // after some reordering has occurred.
