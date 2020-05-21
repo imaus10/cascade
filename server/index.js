@@ -74,7 +74,7 @@ server.on('connection', (newClient) => {
         if (type === 'latency_info') {
             const orderNumber = order.indexOf(fromId);
             // TODO: use this for automatic slicing
-            console.log(`Latency info from ${orderNumber}:`, rest);
+            console.log(`Latency info from ${orderNumber}:\n`, rest);
             return;
         }
 
