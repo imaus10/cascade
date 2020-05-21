@@ -1,3 +1,4 @@
+import { CASCADE_STANDBY_DURATION } from './cascade';
 import { getNextPeer, pingPeer } from './peers';
 import { serverSend } from './server';
 import { getState } from '../reducer';
@@ -12,7 +13,7 @@ export function makeNewRecorder(stream, dispatch) {
         });
     });
     recorder.addEventListener('start', () => {
-        beforeRecordLatency = Date.now() - cascadeStartTime;
+        beforeRecordLatency = Date.now() - cascadeRecordingTime;
     });
     recorder.addEventListener('stop', () => {
         sendLatencyInfo();
@@ -34,9 +35,16 @@ export function addLocalTimeDifference(localTime) {
     localLatencies.push(Date.now() - localTime);
 }
 
-let cascadeStartTime;
-export function setCascadeStartTime() {
-    cascadeStartTime = Date.now();
+// The time CASCADE_STANDBY starts
+let cascadeStandbyTime;
+export function setCascadeStandbyTime() {
+    cascadeStandbyTime = Date.now();
+}
+
+// The time CASCADE_RECORDING starts
+let cascadeRecordingTime;
+export function setCascadeRecordingTime() {
+    cascadeRecordingTime = Date.now();
 }
 
 let beforeRecordLatency;
@@ -45,7 +53,6 @@ let beforeRecordLatency;
 // to get an idea of the latencies between each connection in the cascade.
 // We use it later to stitch together the video.
 export function gatherLatencyInfo() {
-    latencies = [];
     const nextPeer = getNextPeer();
     if (nextPeer) {
         pingPeer(nextPeer);
@@ -57,7 +64,6 @@ export function sendLatencyInfo() {
 
     let latencyInfo = {
         type   : 'latency_info',
-        cascadeStartTime,
         fromId : myId
     };
 
@@ -79,16 +85,20 @@ export function sendLatencyInfo() {
         const numPings = localLatencies.length;
         const avgPingTime = avg(localLatencies);
         const stdDevPingTime = stddev(localLatencies, avgPingTime);
+        const signalingLatency = cascadeRecordingTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
         latencyInfo = {
             ...latencyInfo,
             avgPingTime,
             beforeRecordLatency,
             numPings,
+            signalingLatency,
             stdDevPingTime,
         };
     }
 
     serverSend(latencyInfo);
+    latencies = [];
+    localLatencies = [];
 }
 
 function avg(values) {

@@ -1,6 +1,6 @@
 import Peer from 'simple-peer';
 import { changeMode, cloneMyStream, setStreamsFromCascade } from './cascade';
-import { addLatency, addLocalTimeDifference, setCascadeStartTime } from './recording';
+import { addLatency, addLocalTimeDifference } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -43,7 +43,6 @@ function makeNewPeer(initiator, newId, dispatch) {
         // from all previous peers.
         // Receiving it is a signal to start the cascade.
         if (mode === CASCADE_STANDBY) {
-            setCascadeStartTime();
             setStreamsFromCascade(theirStream, dispatch);
             changeMode(CASCADE_RECORDING, dispatch);
         } else {

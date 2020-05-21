@@ -1,8 +1,10 @@
 import { getNextPeer } from './peers';
-import { gatherLatencyInfo, setCascadeStartTime } from './recording';
+import { gatherLatencyInfo, setCascadeStandbyTime, setCascadeRecordingTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
+
+export const CASCADE_STANDBY_DURATION = 6000; // milliseconds
 
 function cloneTracks(stream) {
     return stream.getTracks().map((track) => track.clone());
@@ -34,17 +36,16 @@ export function changeMode(newMode, dispatch) {
         mode : newMode
     });
 
-    const { iAmInitiator, recorder } = getState();
+    const { recorder } = getState();
 
     switch (newMode) {
         case CASCADE_STANDBY:
+            setCascadeStandbyTime();
             stopStreaming();
             gatherLatencyInfo();
             break;
         case CASCADE_RECORDING:
-            if (iAmInitiator) {
-                setCascadeStartTime();
-            }
+            setCascadeRecordingTime();
             sendCascadeStream();
             recorder.start();
             break;

@@ -1,16 +1,18 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
-import { changeMode } from '../../state/actions/cascade';
+import { CASCADE_STANDBY_DURATION, changeMode } from '../../state/actions/cascade';
 import { CASCADE_RECORDING } from '../../state/modes';
 
 const Countdown = () => {
+    // Counts down to zero from here
+    const countdownStart = 3;
     const [, dispatch] = useContext(Context);
-    const [number, setNumber] = useState(3);
+    const [number, setNumber] = useState(countdownStart);
     useEffect(() => {
         if (number > 0) {
             setTimeout(() => {
                 setNumber(number - 1);
-            }, 2000);
+            }, CASCADE_STANDBY_DURATION / countdownStart);
         } else {
             changeMode(CASCADE_RECORDING, dispatch);
         }
