@@ -1,6 +1,6 @@
 import Peer from 'simple-peer';
 import { changeMode, cloneMyStream, setStreamsFromCascade } from './cascade';
-import { addLatency, addLocalTimeDifference, setCascadeReceiveTime } from './recording';
+import { addPeerRelativeOneWayLatency, addPeerRoundTripLatency, setCascadeReceiveTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -74,16 +74,15 @@ function makeNewPeer(initiator, newId, dispatch) {
 
         // Send the ping right back
         if (type === 'ping') {
-            addLocalTimeDifference(startTime)
+            addPeerRelativeOneWayLatency(startTime)
             peer.send(JSON.stringify({
                 type : 'pong',
                 startTime,
             }));
         }
-        // Keep pinging until recording starts
         if (type === 'pong') {
-            const roundTripLatency = Date.now() - startTime;
-            addLatency(roundTripLatency)
+            addPeerRoundTripLatency(startTime)
+            // Keep pinging until recording starts
             if (mode === CASCADE_STANDBY) {
                 pingPeer(peer);
             }

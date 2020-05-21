@@ -1,6 +1,7 @@
 import { CASCADE_STANDBY_DURATION } from './cascade';
 import { getNextPeer, pingPeer } from './peers';
 import { serverSend } from './server';
+import { CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export function makeNewRecorder(stream, dispatch) {
@@ -26,17 +27,26 @@ export function makeNewRecorder(stream, dispatch) {
 }
 
 // The time it takes for a ping to get back to its sender
-let latencies = [];
-export function addLatency(latency) {
-    latencies.push(latency);
+let peerRoundTripLatencies = [];
+export function addPeerRoundTripLatency(startTime) {
+    peerRoundTripLatencies.push(Date.now() - startTime);
 }
 
 // The difference between the time at the sender and the local time when it's received.
 // We can compare this value with an estimated one-way trip time
 // to see the time offset between the two machines (hopefully).
-let localLatencies = [];
-export function addLocalTimeDifference(localTime) {
-    localLatencies.push(Date.now() - localTime);
+let peerRelativeOneWayLatencies = [];
+export function addPeerRelativeOneWayLatency(remoteStartTime) {
+    peerRelativeOneWayLatencies.push(Date.now() - remoteStartTime);
+}
+
+let serverLatencies = {};
+function addServerLatency(id, startTime) {
+    const latencies = serverLatencies[id] || [];
+    if (latencies.length === 0) {
+        serverLatencies[id] = latencies;
+    }
+    latencies.push(Date.now() - startTime);
 }
 
 // The time CASCADE_STANDBY starts
@@ -70,9 +80,54 @@ let beforeRecordLatency;
 // to get an idea of the latencies between each connection in the cascade.
 // We use it later to stitch together the video.
 export function gatherLatencyInfo() {
+    const { iAmInitiator, myId } = getState();
     const nextPeer = getNextPeer();
+    // Peer latencies
     if (nextPeer) {
         pingPeer(nextPeer);
+    }
+    // Server latencies
+    if (iAmInitiator) {
+        // This will broadcast to all other peers
+        // because forId is missing
+        serverSend({
+            type      : 'ping',
+            fromId    : myId,
+            startTime : Date.now()
+        });
+    }
+}
+
+export function handleServerPingPong(action) {
+    const { fromId, startTime, type } = action;
+    const { mode, myId } = getState();
+
+    // If it's a regular keep-alive pong from the server
+    // just ignore it
+    if (!fromId) return;
+
+    switch (type) {
+        case 'ping':
+            serverSend({
+                type   : 'pong',
+                forId  : fromId,
+                fromId : myId,
+                startTime,
+            });
+            break;
+        case 'pong':
+            addServerLatency(fromId, startTime);
+            // Keep pinging until recording starts
+            if (mode === CASCADE_STANDBY) {
+                serverSend({
+                    type      : 'ping',
+                    forId     : fromId,
+                    fromId    : myId,
+                    startTime : Date.now()
+                });
+            }
+            break;
+        default:
     }
 }
 
@@ -87,37 +142,51 @@ export function sendLatencyInfo() {
 
     // No pongs at the end of the cascade
     if (getNextPeer()) {
-        const numPongs = latencies.length;
-        const avgPongTime = avg(latencies);
-        const stdDevPongTime = stddev(latencies, avgPongTime);
+        const peerPongNum = peerRoundTripLatencies.length;
+        const peerPongTimeAvg = avg(peerRoundTripLatencies);
+        const peerPongTimeStdDev = stddev(peerRoundTripLatencies, peerPongTimeAvg);
         const sendLatency = cascadeSendTime - cascadeRecordingTime;
         latencyInfo = {
             ...latencyInfo,
-            avgPongTime,
-            numPongs,
-            sendLatency,
-            stdDevPongTime
+            peerPongNum,
+            peerPongTimeAvg,
+            peerPongTimeStdDev,
+            sendLatency
         };
     }
 
     // No pings for initiator
     if (!iAmInitiator) {
-        const numPings = localLatencies.length;
-        const avgPingTime = avg(localLatencies);
-        const stdDevPingTime = stddev(localLatencies, avgPingTime);
+        const peerPingNum = peerRelativeOneWayLatencies.length;
+        const peerPingTimeAvg = avg(peerRelativeOneWayLatencies);
+        const peerPingTimeStdDev = stddev(peerRelativeOneWayLatencies, peerPingTimeAvg);
         const signalingLatency = cascadeReceiveTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
         latencyInfo = {
             ...latencyInfo,
-            avgPingTime,
-            numPings,
-            signalingLatency,
-            stdDevPingTime,
+            peerPingNum,
+            peerPingTimeAvg,
+            peerPingTimeStdDev,
+            signalingLatency
         };
+    } else {
+        Object.entries(serverLatencies).forEach(([fromId, latencies]) => {
+            const serverPongNum = latencies.length;
+            const serverPongTimeAvg = avg(peerRoundTripLatencies);
+            const serverPongTimeStdDev = stddev(peerRoundTripLatencies, serverPongTimeAvg);
+            serverSend({
+                type: 'latency_info',
+                fromId,
+                serverPongNum,
+                serverPongTimeAvg,
+                serverPongTimeStdDev
+            })
+        });
     }
 
     serverSend(latencyInfo);
-    latencies = [];
-    localLatencies = [];
+    peerRoundTripLatencies = [];
+    peerRelativeOneWayLatencies = [];
+    serverLatencies = {};
 }
 
 function avg(values) {

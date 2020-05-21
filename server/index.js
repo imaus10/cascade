@@ -65,8 +65,9 @@ server.on('connection', (newClient) => {
             ...rest
         } = JSON.parse(data);
 
-        // Keep the connection alive
-        if (type === 'ping') {
+        // Keep the connection alive.
+        // If there's a fromId, it's meant to be sent to a peer.
+        if (type === 'ping' && !fromId) {
             send(newClient, { type : 'pong' });
             return;
         };
