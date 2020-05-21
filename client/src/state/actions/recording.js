@@ -13,7 +13,11 @@ export function makeNewRecorder(stream, dispatch) {
         });
     });
     recorder.addEventListener('start', () => {
-        beforeRecordLatency = Date.now() - cascadeRecordingTime;
+        const { iAmInitiator } = getState();
+        // For non-initiators, there could be an additional delay between
+        // receiving the stream and record start.
+        const startTime = iAmInitiator ? cascadeRecordingTime : cascadeReceiveTime;
+        beforeRecordLatency = Date.now() - startTime;
     });
     recorder.addEventListener('stop', () => {
         sendLatencyInfo();
@@ -41,10 +45,23 @@ export function setCascadeStandbyTime() {
     cascadeStandbyTime = Date.now();
 }
 
+// When the cascade stream is received
+// (not relevant for the initiator)
+let cascadeReceiveTime;
+export function setCascadeReceiveTime() {
+    cascadeReceiveTime = Date.now();
+}
+
 // The time CASCADE_RECORDING starts
 let cascadeRecordingTime;
 export function setCascadeRecordingTime() {
     cascadeRecordingTime = Date.now();
+}
+
+// Right after the stream is sent, to see how long that part takes.
+let cascadeSendTime;
+export function setCascadeSendTime() {
+    cascadeSendTime = Date.now();
 }
 
 let beforeRecordLatency;
@@ -64,7 +81,8 @@ export function sendLatencyInfo() {
 
     let latencyInfo = {
         type   : 'latency_info',
-        fromId : myId
+        fromId : myId,
+        beforeRecordLatency,
     };
 
     // No pongs at the end of the cascade
@@ -72,10 +90,12 @@ export function sendLatencyInfo() {
         const numPongs = latencies.length;
         const avgPongTime = avg(latencies);
         const stdDevPongTime = stddev(latencies, avgPongTime);
+        const sendLatency = cascadeSendTime - cascadeRecordingTime;
         latencyInfo = {
             ...latencyInfo,
             avgPongTime,
             numPongs,
+            sendLatency,
             stdDevPongTime
         };
     }
@@ -85,11 +105,10 @@ export function sendLatencyInfo() {
         const numPings = localLatencies.length;
         const avgPingTime = avg(localLatencies);
         const stdDevPingTime = stddev(localLatencies, avgPingTime);
-        const signalingLatency = cascadeRecordingTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
+        const signalingLatency = cascadeReceiveTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
         latencyInfo = {
             ...latencyInfo,
             avgPingTime,
-            beforeRecordLatency,
             numPings,
             signalingLatency,
             stdDevPingTime,

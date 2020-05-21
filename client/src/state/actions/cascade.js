@@ -1,5 +1,10 @@
 import { getNextPeer } from './peers';
-import { gatherLatencyInfo, setCascadeStandbyTime, setCascadeRecordingTime } from './recording';
+import {
+    gatherLatencyInfo,
+    setCascadeStandbyTime,
+    setCascadeRecordingTime,
+    setCascadeSendTime
+} from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -87,6 +92,7 @@ function sendCascadeStream() {
         // Let's keep it TODO til we absolutely need do.
         const cascadeStream = new MediaStream(tracks);
         nextPeer.addStream(cascadeStream);
+        setCascadeSendTime();
     }
 }
 
