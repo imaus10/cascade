@@ -1,4 +1,5 @@
 import { getNextPeer } from './peers';
+import { setCascadeRecordingTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -32,6 +33,7 @@ export function changeMode(newMode, dispatch) {
             setupCascade();
             break;
         case CASCADE_RECORDING:
+            setCascadeRecordingTime();
             recorder.start();
             propagateMode(CASCADE_RECORDING);
             break;

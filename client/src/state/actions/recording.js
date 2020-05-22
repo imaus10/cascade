@@ -1,4 +1,3 @@
-import { CASCADE_STANDBY_DURATION } from './cascade';
 import { getNextPeer, pingPeer } from './peers';
 import { serverSend } from './server';
 import { CASCADE_STANDBY } from '../modes';
@@ -13,13 +12,9 @@ export function makeNewRecorder(stream, dispatch) {
             file : URL.createObjectURL(data),
         });
     });
-    // recorder.addEventListener('start', () => {
-    //     const { iAmInitiator } = getState();
-    //     // For non-initiators, there could be an additional delay between
-    //     // receiving the stream and record start.
-    //     const startTime = iAmInitiator ? cascadeRecordingTime : cascadeReceiveTime;
-    //     beforeRecordLatency = Date.now() - startTime;
-    // });
+    recorder.addEventListener('start', () => {
+        beforeRecordLatency = Date.now() - cascadeRecordingTime;
+    });
     // recorder.addEventListener('stop', () => {
     //     sendLatencyInfo();
     // });
@@ -51,29 +46,10 @@ function resetServerLatencies() {
     });
 }
 
-// The time CASCADE_STANDBY starts
-let cascadeStandbyTime;
-export function setCascadeStandbyTime() {
-    cascadeStandbyTime = Date.now();
-}
-
-// When the cascade stream is received
-// (not relevant for the initiator)
-let cascadeReceiveTime;
-export function setCascadeReceiveTime() {
-    cascadeReceiveTime = Date.now();
-}
-
 // The time CASCADE_RECORDING starts
 let cascadeRecordingTime;
 export function setCascadeRecordingTime() {
     cascadeRecordingTime = Date.now();
-}
-
-// Right after the stream is sent, to see how long that part takes.
-let cascadeSendTime;
-export function setCascadeSendTime() {
-    cascadeSendTime = Date.now();
 }
 
 let beforeRecordLatency;
@@ -149,13 +125,11 @@ export function sendLatencyInfo() {
         const peerRoundTrips = peerRoundTripLatencies.length;
         const peerRoundTripAvg = avg(peerRoundTripLatencies);
         const peerRoundTripStdDev = stddev(peerRoundTripLatencies, peerRoundTripAvg);
-        const sendLatency = cascadeSendTime - cascadeRecordingTime;
         latencyInfo = {
             ...latencyInfo,
             peerRoundTrips,
             peerRoundTripAvg,
             peerRoundTripStdDev,
-            sendLatency
         };
     }
 
@@ -164,13 +138,11 @@ export function sendLatencyInfo() {
         const peerOneWayTrips = peerRelativeOneWayLatencies.length;
         const peerOneWayAvg = avg(peerRelativeOneWayLatencies);
         const peerOneWayStdDev = stddev(peerRelativeOneWayLatencies, peerOneWayAvg);
-        const signalingLatency = cascadeReceiveTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
         latencyInfo = {
             ...latencyInfo,
             peerOneWayTrips,
             peerOneWayAvg,
             peerOneWayStdDev,
-            signalingLatency
         };
     } else {
         Object.entries(serverLatenciesByUser).forEach(([fromId, serverLatencies]) => {
