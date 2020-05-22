@@ -1,25 +1,9 @@
 import { getNextPeer } from './peers';
-import {
-    gatherLatencyInfo,
-    setCascadeStandbyTime,
-    setCascadeRecordingTime,
-    setCascadeSendTime
-} from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export const CASCADE_STANDBY_DURATION = 6000; // milliseconds
-
-function cloneTracks(stream) {
-    return stream.getTracks().map((track) => track.clone());
-}
-
-export function cloneMyStream() {
-    const { myStream } = getState();
-    const tracks = cloneTracks(myStream);
-    return new MediaStream(tracks);
-}
 
 export function startCascade(dispatch) {
     const { myId } = getState();
@@ -31,8 +15,8 @@ export function startCascade(dispatch) {
         fromId : myId,
         mode
     };
-    changeMode(mode, dispatch);
     serverSend(action);
+    changeMode(mode, dispatch);
 }
 
 export function changeMode(newMode, dispatch) {
@@ -45,104 +29,116 @@ export function changeMode(newMode, dispatch) {
 
     switch (newMode) {
         case CASCADE_STANDBY:
-            setCascadeStandbyTime();
-            stopStreaming();
-            gatherLatencyInfo();
+            setupCascade();
             break;
         case CASCADE_RECORDING:
-            setCascadeRecordingTime();
-            sendCascadeStream();
             recorder.start();
+            propagateMode(CASCADE_RECORDING);
             break;
         case CASCADE_DONE:
             recorder.stop();
+            propagateMode(CASCADE_DONE);
             resetStreams();
             break;
         default:
     }
 }
 
-function stopStreaming() {
-    const { peers } = getState();
-    Object.values(peers).forEach((peer) => {
-        peer.removeStream(peer.streams[0]);
-    });
-}
-
-function sendCascadeStream() {
-    const { myId, myStream, order, streams } = getState();
-    const nextPeer = getNextPeer();
-    if (nextPeer) {
-        const myIndex = order.indexOf(myId);
-        const myTracks = cloneTracks(myStream);
-        const otherTracks = order.slice(0, myIndex).reduce((accumulator, id) => {
-            return [
-                ...accumulator,
-                ...streams[id].getTracks()
-            ];
-        }, []);
-        const tracks = [
-            ...otherTracks,
-            ...myTracks
-        ];
-        // TODO: how to provide order?
-        // Maybe could peer.addTrack() one by one in order?
-        // Is that guaranteed to be received in the same order?
-        // Will there be A/V sync issues?
-        // Let's keep it TODO til we absolutely need do.
-        const cascadeStream = new MediaStream(tracks);
-        nextPeer.addStream(cascadeStream);
-        setCascadeSendTime();
-    }
-}
-
-export function setStreamsFromCascade(cascade, dispatch) {
+export function getDownstreamIds() {
     const { myId, order } = getState();
-    const audioTracks = cascade.getAudioTracks();
-    const videoTracks = cascade.getVideoTracks();
     const myIndex = order.indexOf(myId);
-    const beforeIds = order.slice(0, myIndex);
-    // For now, combine randomly
-    beforeIds.forEach((id, index) => {
-        const tracks = [
-            audioTracks[index],
-            videoTracks[index]
-        ].filter(Boolean);
-        if (tracks.length !== 2) {
-            console.error('Missing a track in the cascade');
-        }
-        dispatch({
-            type   : 'STREAMS_ADD',
-            id,
-            stream : new MediaStream(tracks)
+    return order.slice(myIndex + 1);
+}
+
+export function getUpstreamIds() {
+    const { myId, order } = getState();
+    const myIndex = order.indexOf(myId);
+    return order.slice(0, myIndex);
+}
+
+function setupCascade() {
+    const { myId, order, peers, streams } = getState();
+
+    // Disconnect stream from all upstream peers
+    // and all downstream peers except the one right after
+    const disconnectIds = [
+        ...getUpstreamIds(),
+        ...getDownstreamIds().slice(1)
+    ];
+    console.log('disconnecting from:', disconnectIds);
+    disconnectIds.forEach((id) => {
+        const peer = peers[id];
+        const stream = peer.streams[0];
+        stream.getTracks().forEach((track) => {
+            track.stop();
+            peer.removeTrack(track, stream);
         });
     });
+
+    // To start, send the stream from the previous peer
+    // to the next peer in the cascade.
+    // The rest of the streams will come later with the peer stream event.
+    const nextPeer = getNextPeer();
+    const myIndex = order.indexOf(myId);
+    const prevId = order[myIndex - 1];
+    if (prevId && nextPeer) {
+        const prevStream = streams[prevId].clone();
+        nextPeer.addStream(prevStream);
+        console.log(`sending stream from prev ${prevId} to next ${order[myIndex + 1]}`);
+    }
 }
 
-function resetStreams() {
-    const { myId, order, peers } = getState();
+export function setCascadeStreams(stream, dispatch) {
+    const { streams } = getState();
 
-    // Adding the same MediaStream again causes an error
-    // so we have to clone the tracks
-    // and wrap them in a new MediaStream
-    const newMyStream = cloneMyStream();
+    // Find the next id that doesn't have a stream,
+    // going backwards starting from one before the previous peer
+    const upstreamIds = getUpstreamIds().slice(0, -1).reverse();
+    const id = upstreamIds.find((upstreamId) => !streams[upstreamId]);
+    dispatch({
+        type : 'STREAMS_ADD',
+        id,
+        stream,
+    });
 
-    // Signal to the next one it's done
     const nextPeer = getNextPeer();
     if (nextPeer) {
-        nextPeer.removeStream(nextPeer.streams[0]);
-        nextPeer.addStream(newMyStream);
+        nextPeer.addStream(stream);
     }
+}
 
-    // Send live video back to everyone upstream
-    const myIndex = order.indexOf(myId);
-    const beforeIds = order.slice(0, myIndex);
-    beforeIds.forEach((id) => {
-        const peer = peers[id];
-        peer.addStream(newMyStream);
-    });
+function propagateMode(mode) {
+    const nextPeer = getNextPeer();
+    if (nextPeer) {
+        nextPeer.send(JSON.stringify({
+            type : 'MODE_SET',
+            mode
+        }));
+    }
 }
 
 export function stopCascade(dispatch) {
     changeMode(CASCADE_DONE, dispatch);
+}
+
+function resetStreams() {
+    const { myStream, peers } = getState();
+
+    const nextPeer = getNextPeer();
+    if (nextPeer) {
+        // Remove the cascaded streams
+        // The streams stay in the order they're added
+        nextPeer.streams.slice(1).forEach((stream) => {
+            stream.getTracks().forEach((track) => track.stop());
+            nextPeer.removeStream(stream);
+        });
+    }
+
+    // Send live video back to everyone upstream
+    // They will reciprocate if they're not already sending video
+    const beforeIds = getUpstreamIds();
+    beforeIds.forEach((id) => {
+        const peer = peers[id];
+        peer.addStream(myStream.clone());
+    });
 }

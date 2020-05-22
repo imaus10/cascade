@@ -65,7 +65,7 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const orderNumber = mode === CASCADE_STANDBY ? 1 : order.indexOf(id) + 1;
+    const orderNumber = order.indexOf(id) + 1;
     const row = Math.ceil(orderNumber / numColumns);
     const numBeforeRow = (row - 1) * numColumns;
     const col = orderNumber - numBeforeRow;

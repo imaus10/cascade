@@ -1,4 +1,4 @@
-import { CASCADE_STANDBY, READY, SETUP } from './modes';
+import { CASCADE_DONE, CASCADE_STANDBY, READY, SETUP } from './modes';
 import { makeNewRecorder } from './actions/recording';
 
 export const initialState = {
@@ -31,7 +31,7 @@ export const initialState = {
 
 function reducer(state, action) {
     console.log('ACTION', action);
-    const { files, mode, myId, myStream, peers, streams } = state;
+    const { files, mode, myId, myStream, order, peers, streams } = state;
     switch (action.type) {
         case 'AUDIO_OUTPUT_SET':
             return {
@@ -45,9 +45,17 @@ function reducer(state, action) {
             };
         case 'MODE_SET': {
             const { mode : newMode } = action;
-            // When starting the cascade, remove the streams
-            // (which will be stopped shortly)
-            const newStreams = newMode === CASCADE_STANDBY ? {} : streams;
+            // When starting or ending the cascade, remove all streams except
+            // the prev one (they will be stopped shortly)
+            let newStreams = streams;
+            if (newMode === CASCADE_STANDBY || newMode === CASCADE_DONE) {
+                newStreams = {};
+                const myIndex = order.indexOf(myId);
+                const prevId = order[myIndex - 1];
+                if (prevId) {
+                    newStreams[prevId] = streams[prevId];
+                }
+            }
             return {
                 ...state,
                 mode    : newMode,
@@ -116,6 +124,14 @@ function reducer(state, action) {
                     [action.id] : action.stream
                 }
             };
+        case 'STREAMS_REMOVE': {
+            const newStreams = { ...streams };
+            delete newStreams[action.id];
+            return {
+                ...state,
+                streams : newStreams
+            };
+        }
         default: {
             console.error('Unknown action:', action);
             return state;

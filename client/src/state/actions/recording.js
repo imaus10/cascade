@@ -13,16 +13,16 @@ export function makeNewRecorder(stream, dispatch) {
             file : URL.createObjectURL(data),
         });
     });
-    recorder.addEventListener('start', () => {
-        const { iAmInitiator } = getState();
-        // For non-initiators, there could be an additional delay between
-        // receiving the stream and record start.
-        const startTime = iAmInitiator ? cascadeRecordingTime : cascadeReceiveTime;
-        beforeRecordLatency = Date.now() - startTime;
-    });
-    recorder.addEventListener('stop', () => {
-        sendLatencyInfo();
-    })
+    // recorder.addEventListener('start', () => {
+    //     const { iAmInitiator } = getState();
+    //     // For non-initiators, there could be an additional delay between
+    //     // receiving the stream and record start.
+    //     const startTime = iAmInitiator ? cascadeRecordingTime : cascadeReceiveTime;
+    //     beforeRecordLatency = Date.now() - startTime;
+    // });
+    // recorder.addEventListener('stop', () => {
+    //     sendLatencyInfo();
+    // });
     return recorder;
 }
 

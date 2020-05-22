@@ -1,8 +1,7 @@
 import Peer from 'simple-peer';
-import { changeMode, cloneMyStream, setStreamsFromCascade } from './cascade';
-import { addPeerRelativeOneWayLatency, addPeerRoundTripLatency, setCascadeReceiveTime } from './recording';
+import { changeMode, setCascadeStreams } from './cascade';
 import { serverSend } from './server';
-import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
+import { CASCADE_DONE, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export function checkForNewPeers(action, dispatch) {
@@ -24,7 +23,7 @@ function makeNewPeer(initiator, newId, dispatch) {
     const { myId, myStream } = getState();
     const peer = new Peer({
         initiator,
-        stream : myStream,
+        stream : myStream.clone(),
     });
 
     peer.on('signal', (signal) => {
@@ -38,29 +37,18 @@ function makeNewPeer(initiator, newId, dispatch) {
 
     peer.on('stream', (theirStream) => {
         const { mode } = getState();
-        // In this mode, the stream is a cascade
-        // containing all the synchronized audio/video
-        // from all previous peers.
-        // Receiving it is a signal to start the cascade.
         if (mode === CASCADE_STANDBY) {
-            setCascadeReceiveTime();
-            setStreamsFromCascade(theirStream, dispatch);
-            changeMode(CASCADE_RECORDING, dispatch);
+            setCascadeStreams(theirStream, dispatch);
         } else {
             dispatch({
                 type   : 'STREAMS_ADD',
                 id     : newId,
                 stream : theirStream
             });
-            // If a new stream is added while recording,
-            // that means the cascade is over
-            if (mode === CASCADE_RECORDING) {
-                changeMode(CASCADE_DONE, dispatch);
-            }
             // After cascading, if this is sent from downstream,
             // we need to reciprocate and reopen our stream as well
             if (mode === CASCADE_DONE && peer.streams.length === 0) {
-                peer.addStream(cloneMyStream());
+                peer.addStream(myStream.clone());
             }
         }
     });
@@ -69,24 +57,30 @@ function makeNewPeer(initiator, newId, dispatch) {
     // pings to get an idea of the time it takes for a stream
     // to reach the next person in the cascade
     peer.on('data', (data) => {
-        const { mode } = getState();
-        const { startTime, type } = JSON.parse(data.toString());
+        // const { mode } = getState();
+        const { mode, type } = JSON.parse(data.toString());
+        if (type === 'MODE_SET') {
+            changeMode(mode, dispatch);
+            return;
+        }
+
+        console.error(`Unknown action "${type}" sent thru peer`);
 
         // Send the ping right back
-        if (type === 'ping') {
-            addPeerRelativeOneWayLatency(startTime)
-            peer.send(JSON.stringify({
-                type : 'pong',
-                startTime,
-            }));
-        }
-        if (type === 'pong') {
-            addPeerRoundTripLatency(startTime)
-            // Keep pinging until recording starts
-            if (mode === CASCADE_STANDBY) {
-                pingPeer(peer);
-            }
-        }
+        // if (type === 'ping') {
+        //     addPeerRelativeOneWayLatency(startTime)
+        //     peer.send(JSON.stringify({
+        //         type : 'pong',
+        //         startTime,
+        //     }));
+        // }
+        // if (type === 'pong') {
+        //     addPeerRoundTripLatency(startTime)
+        //     // Keep pinging until recording starts
+        //     if (mode === CASCADE_STANDBY) {
+        //         pingPeer(peer);
+        //     }
+        // }
     });
 
     dispatch({
