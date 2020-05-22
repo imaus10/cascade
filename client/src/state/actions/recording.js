@@ -40,13 +40,15 @@ export function addPeerRelativeOneWayLatency(remoteStartTime) {
     peerRelativeOneWayLatencies.push(Date.now() - remoteStartTime);
 }
 
-let serverLatencies = {};
-function addServerLatency(id, startTime) {
-    const latencies = serverLatencies[id] || [];
-    if (latencies.length === 0) {
-        serverLatencies[id] = latencies;
-    }
-    latencies.push(Date.now() - startTime);
+let serverLatenciesByUser = {};
+function addServerLatency(userId, startTime) {
+    serverLatenciesByUser[userId].push(Date.now() - startTime);
+}
+function resetServerLatencies() {
+    const { order } = getState();
+    order.slice(1).forEach((userId) => {
+        serverLatenciesByUser[userId] = [];
+    });
 }
 
 // The time CASCADE_STANDBY starts
@@ -86,8 +88,10 @@ export function gatherLatencyInfo() {
     if (nextPeer) {
         pingPeer(nextPeer);
     }
-    // Server latencies
+    // Server latencies - gathered only by initiator
+    // because they send the initial MODE_SET action
     if (iAmInitiator) {
+        resetServerLatencies();
         // This will broadcast to all other peers
         // because forId is missing
         serverSend({
@@ -142,43 +146,43 @@ export function sendLatencyInfo() {
 
     // No pongs at the end of the cascade
     if (getNextPeer()) {
-        const peerPongNum = peerRoundTripLatencies.length;
-        const peerPongTimeAvg = avg(peerRoundTripLatencies);
-        const peerPongTimeStdDev = stddev(peerRoundTripLatencies, peerPongTimeAvg);
+        const peerRoundTrips = peerRoundTripLatencies.length;
+        const peerRoundTripAvg = avg(peerRoundTripLatencies);
+        const peerRoundTripStdDev = stddev(peerRoundTripLatencies, peerRoundTripAvg);
         const sendLatency = cascadeSendTime - cascadeRecordingTime;
         latencyInfo = {
             ...latencyInfo,
-            peerPongNum,
-            peerPongTimeAvg,
-            peerPongTimeStdDev,
+            peerRoundTrips,
+            peerRoundTripAvg,
+            peerRoundTripStdDev,
             sendLatency
         };
     }
 
     // No pings for initiator
     if (!iAmInitiator) {
-        const peerPingNum = peerRelativeOneWayLatencies.length;
-        const peerPingTimeAvg = avg(peerRelativeOneWayLatencies);
-        const peerPingTimeStdDev = stddev(peerRelativeOneWayLatencies, peerPingTimeAvg);
+        const peerOneWayTrips = peerRelativeOneWayLatencies.length;
+        const peerOneWayAvg = avg(peerRelativeOneWayLatencies);
+        const peerOneWayStdDev = stddev(peerRelativeOneWayLatencies, peerOneWayAvg);
         const signalingLatency = cascadeReceiveTime - cascadeStandbyTime - CASCADE_STANDBY_DURATION;
         latencyInfo = {
             ...latencyInfo,
-            peerPingNum,
-            peerPingTimeAvg,
-            peerPingTimeStdDev,
+            peerOneWayTrips,
+            peerOneWayAvg,
+            peerOneWayStdDev,
             signalingLatency
         };
     } else {
-        Object.entries(serverLatencies).forEach(([fromId, latencies]) => {
-            const serverPongNum = latencies.length;
-            const serverPongTimeAvg = avg(peerRoundTripLatencies);
-            const serverPongTimeStdDev = stddev(peerRoundTripLatencies, serverPongTimeAvg);
+        Object.entries(serverLatenciesByUser).forEach(([fromId, serverLatencies]) => {
+            const serverRoundTrips = serverLatencies.length;
+            const serverRoundTripAvg = avg(serverLatencies);
+            const serverRoundTripStdDev = stddev(serverLatencies, serverRoundTripAvg);
             serverSend({
                 type: 'latency_info',
                 fromId,
-                serverPongNum,
-                serverPongTimeAvg,
-                serverPongTimeStdDev
+                serverRoundTrips,
+                serverRoundTripAvg,
+                serverRoundTripStdDev
             })
         });
     }
@@ -186,7 +190,6 @@ export function sendLatencyInfo() {
     serverSend(latencyInfo);
     peerRoundTripLatencies = [];
     peerRelativeOneWayLatencies = [];
-    serverLatencies = {};
 }
 
 function avg(values) {
