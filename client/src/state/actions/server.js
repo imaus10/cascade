@@ -1,6 +1,5 @@
 import { changeMode } from './cascade';
 import { checkForNewPeers, handlePeerSignal } from './peers';
-import { handleServerPingPong } from './recording';
 import { getState } from '../reducer';
 
 export function serverSend(sendAction) {
@@ -31,9 +30,7 @@ export function makeServer(serverURL, dispatch) {
             case 'PEER_SIGNAL':
                 handlePeerSignal(action, dispatch);
                 break;
-            case 'ping':
             case 'pong':
-                handleServerPingPong(action);
                 break;
             default:
                 // Otherwise, messages from the server

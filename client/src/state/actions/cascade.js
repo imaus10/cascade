@@ -1,23 +1,25 @@
-import { getNextPeer } from './peers';
-import { setCascadeRecordingTime } from './recording';
+import { setCascadeRecordingTime, setCascadeSentTime } from './recording';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export const CASCADE_STANDBY_DURATION = 6000; // milliseconds
 
-export function startCascade(dispatch) {
-    const { myId } = getState();
-    // dispatch MODE_SET and broadcast via server
-    // (server will set lock on new participants)
-    const mode = CASCADE_STANDBY;
-    const action = {
-        type   : 'MODE_SET',
-        fromId : myId,
-        mode
-    };
-    serverSend(action);
-    changeMode(mode, dispatch);
+function getNextPeer(state) {
+    const { myId, order, peers } = getState();
+    const nextIndex = order.indexOf(myId) + 1;
+    const nextId = order[nextIndex];
+    return peers[nextId];
+}
+
+function cascadeModeSet(mode) {
+    const nextPeer = getNextPeer();
+    if (nextPeer) {
+        nextPeer.send(JSON.stringify({
+            type : 'MODE_SET',
+            mode
+        }));
+    }
 }
 
 export function changeMode(newMode, dispatch) {
@@ -35,15 +37,30 @@ export function changeMode(newMode, dispatch) {
         case CASCADE_RECORDING:
             setCascadeRecordingTime();
             recorder.start();
-            propagateMode(CASCADE_RECORDING);
+            cascadeModeSet(CASCADE_RECORDING);
+            setCascadeSentTime();
             break;
         case CASCADE_DONE:
             recorder.stop();
-            propagateMode(CASCADE_DONE);
+            cascadeModeSet(CASCADE_DONE);
             resetStreams();
             break;
         default:
     }
+}
+
+export function startCascade(dispatch) {
+    const { myId } = getState();
+    // dispatch MODE_SET and broadcast via server
+    // (server will set lock on new participants)
+    const mode = CASCADE_STANDBY;
+    const action = {
+        type   : 'MODE_SET',
+        fromId : myId,
+        mode
+    };
+    serverSend(action);
+    changeMode(mode, dispatch);
 }
 
 export function getDownstreamIds() {
@@ -67,7 +84,6 @@ function setupCascade() {
         ...getUpstreamIds(),
         ...getDownstreamIds().slice(1)
     ];
-    console.log('disconnecting from:', disconnectIds);
     disconnectIds.forEach((id) => {
         const peer = peers[id];
         const stream = peer.streams[0];
@@ -79,22 +95,21 @@ function setupCascade() {
 
     // To start, send the stream from the previous peer
     // to the next peer in the cascade.
-    // The rest of the streams will come later with the peer stream event.
+    // The rest of the streams will come with the peer stream event,
+    // which calls addCascadedStream()
     const nextPeer = getNextPeer();
     const myIndex = order.indexOf(myId);
     const prevId = order[myIndex - 1];
     if (prevId && nextPeer) {
         const prevStream = streams[prevId].clone();
         nextPeer.addStream(prevStream);
-        console.log(`sending stream from prev ${prevId} to next ${order[myIndex + 1]}`);
     }
 }
 
-export function setCascadeStreams(stream, dispatch) {
+export function addCascadedStream(stream, dispatch) {
     const { streams } = getState();
 
-    // Find the next id that doesn't have a stream,
-    // going backwards starting from one before the previous peer
+    // Find the next upstream id from here that doesn't have a stream set
     const upstreamIds = getUpstreamIds().slice(0, -1).reverse();
     const id = upstreamIds.find((upstreamId) => !streams[upstreamId]);
     dispatch({
@@ -106,16 +121,6 @@ export function setCascadeStreams(stream, dispatch) {
     const nextPeer = getNextPeer();
     if (nextPeer) {
         nextPeer.addStream(stream);
-    }
-}
-
-function propagateMode(mode) {
-    const nextPeer = getNextPeer();
-    if (nextPeer) {
-        nextPeer.send(JSON.stringify({
-            type : 'MODE_SET',
-            mode
-        }));
     }
 }
 

@@ -1,7 +1,16 @@
-import { getNextPeer, pingPeer } from './peers';
 import { serverSend } from './server';
-import { CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
+
+// The time CASCADE_RECORDING starts
+let cascadeRecordingTime;
+export function setCascadeRecordingTime() {
+    cascadeRecordingTime = Date.now();
+}
+let cascadeSentTime;
+export function setCascadeSentTime() {
+    cascadeSentTime = Date.now();
+}
+let beforeRecordLatency;
 
 export function makeNewRecorder(stream, dispatch) {
     // TODO: use specific codecs. check browser compatibility.
@@ -15,164 +24,19 @@ export function makeNewRecorder(stream, dispatch) {
     recorder.addEventListener('start', () => {
         beforeRecordLatency = Date.now() - cascadeRecordingTime;
     });
-    // recorder.addEventListener('stop', () => {
-    //     sendLatencyInfo();
-    // });
+    recorder.addEventListener('stop', () => {
+        sendLatencyInfo();
+    });
     return recorder;
 }
 
-// The time it takes for a ping to get back to its sender
-let peerRoundTripLatencies = [];
-export function addPeerRoundTripLatency(startTime) {
-    peerRoundTripLatencies.push(Date.now() - startTime);
-}
-
-// The difference between the time at the sender and the local time when it's received.
-// We can compare this value with an estimated one-way trip time
-// to see the time offset between the two machines (hopefully).
-let peerRelativeOneWayLatencies = [];
-export function addPeerRelativeOneWayLatency(remoteStartTime) {
-    peerRelativeOneWayLatencies.push(Date.now() - remoteStartTime);
-}
-
-let serverLatenciesByUser = {};
-function addServerLatency(userId, startTime) {
-    serverLatenciesByUser[userId].push(Date.now() - startTime);
-}
-function resetServerLatencies() {
-    const { order } = getState();
-    order.slice(1).forEach((userId) => {
-        serverLatenciesByUser[userId] = [];
-    });
-}
-
-// The time CASCADE_RECORDING starts
-let cascadeRecordingTime;
-export function setCascadeRecordingTime() {
-    cascadeRecordingTime = Date.now();
-}
-
-let beforeRecordLatency;
-
-// This starts a series of pings that lasts from standby until recording starts
-// to get an idea of the latencies between each connection in the cascade.
-// We use it later to stitch together the video.
-export function gatherLatencyInfo() {
-    const { iAmInitiator, myId } = getState();
-    const nextPeer = getNextPeer();
-    // Peer latencies
-    if (nextPeer) {
-        pingPeer(nextPeer);
-    }
-    // Server latencies - gathered only by initiator
-    // because they send the initial MODE_SET action
-    if (iAmInitiator) {
-        resetServerLatencies();
-        // This will broadcast to all other peers
-        // because forId is missing
-        serverSend({
-            type      : 'ping',
-            fromId    : myId,
-            startTime : Date.now()
-        });
-    }
-}
-
-export function handleServerPingPong(action) {
-    const { fromId, startTime, type } = action;
-    const { mode, myId } = getState();
-
-    // If it's a regular keep-alive pong from the server
-    // just ignore it
-    if (!fromId) return;
-
-    switch (type) {
-        case 'ping':
-            serverSend({
-                type   : 'pong',
-                forId  : fromId,
-                fromId : myId,
-                startTime,
-            });
-            break;
-        case 'pong':
-            addServerLatency(fromId, startTime);
-            // Keep pinging until recording starts
-            if (mode === CASCADE_STANDBY) {
-                serverSend({
-                    type      : 'ping',
-                    forId     : fromId,
-                    fromId    : myId,
-                    startTime : Date.now()
-                });
-            }
-            break;
-        default:
-    }
-}
-
 export function sendLatencyInfo() {
-    const { iAmInitiator, myId } = getState();
-
+    const { myId } = getState();
     let latencyInfo = {
-        type   : 'latency_info',
-        fromId : myId,
+        type              : 'latency_info',
+        fromId            : myId,
         beforeRecordLatency,
+        beforeSendLatency : cascadeSentTime - cascadeRecordingTime
     };
-
-    // No pongs at the end of the cascade
-    if (getNextPeer()) {
-        const peerRoundTrips = peerRoundTripLatencies.length;
-        const peerRoundTripAvg = avg(peerRoundTripLatencies);
-        const peerRoundTripStdDev = stddev(peerRoundTripLatencies, peerRoundTripAvg);
-        latencyInfo = {
-            ...latencyInfo,
-            peerRoundTrips,
-            peerRoundTripAvg,
-            peerRoundTripStdDev,
-        };
-    }
-
-    // No pings for initiator
-    if (!iAmInitiator) {
-        const peerOneWayTrips = peerRelativeOneWayLatencies.length;
-        const peerOneWayAvg = avg(peerRelativeOneWayLatencies);
-        const peerOneWayStdDev = stddev(peerRelativeOneWayLatencies, peerOneWayAvg);
-        latencyInfo = {
-            ...latencyInfo,
-            peerOneWayTrips,
-            peerOneWayAvg,
-            peerOneWayStdDev,
-        };
-    } else {
-        Object.entries(serverLatenciesByUser).forEach(([fromId, serverLatencies]) => {
-            const serverRoundTrips = serverLatencies.length;
-            const serverRoundTripAvg = avg(serverLatencies);
-            const serverRoundTripStdDev = stddev(serverLatencies, serverRoundTripAvg);
-            serverSend({
-                type: 'latency_info',
-                fromId,
-                serverRoundTrips,
-                serverRoundTripAvg,
-                serverRoundTripStdDev
-            })
-        });
-    }
-
     serverSend(latencyInfo);
-    peerRoundTripLatencies = [];
-    peerRelativeOneWayLatencies = [];
-}
-
-function avg(values) {
-    const sum = values.reduce((accumulator, value) => accumulator + value, 0);
-    return sum / values.length;
-}
-
-function stddev(values, mean) {
-    const sumOfSquares = values.reduce(
-        (accumulator, value) => accumulator + Math.pow(value - mean, 2),
-        0
-    );
-    return Math.sqrt(sumOfSquares / (values.length - 1));
 }

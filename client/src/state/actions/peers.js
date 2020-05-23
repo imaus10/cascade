@@ -1,5 +1,5 @@
 import Peer from 'simple-peer';
-import { changeMode, setCascadeStreams } from './cascade';
+import { changeMode, addCascadedStream } from './cascade';
 import { serverSend } from './server';
 import { CASCADE_DONE, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
@@ -23,7 +23,7 @@ function makeNewPeer(initiator, newId, dispatch) {
     const { myId, myStream } = getState();
     const peer = new Peer({
         initiator,
-        stream : myStream.clone(),
+        stream : myStream.clone()
     });
 
     peer.on('signal', (signal) => {
@@ -38,7 +38,7 @@ function makeNewPeer(initiator, newId, dispatch) {
     peer.on('stream', (theirStream) => {
         const { mode } = getState();
         if (mode === CASCADE_STANDBY) {
-            setCascadeStreams(theirStream, dispatch);
+            addCascadedStream(theirStream, dispatch);
         } else {
             dispatch({
                 type   : 'STREAMS_ADD',
@@ -53,34 +53,15 @@ function makeNewPeer(initiator, newId, dispatch) {
         }
     });
 
-    // The peer data channel is currently only used for sending
-    // pings to get an idea of the time it takes for a stream
-    // to reach the next person in the cascade
+    // The peer data channel is currently only used
+    // for propagating mode changes down the cascade
     peer.on('data', (data) => {
-        // const { mode } = getState();
         const { mode, type } = JSON.parse(data.toString());
         if (type === 'MODE_SET') {
             changeMode(mode, dispatch);
             return;
         }
-
         console.error(`Unknown action "${type}" sent thru peer`);
-
-        // Send the ping right back
-        // if (type === 'ping') {
-        //     addPeerRelativeOneWayLatency(startTime)
-        //     peer.send(JSON.stringify({
-        //         type : 'pong',
-        //         startTime,
-        //     }));
-        // }
-        // if (type === 'pong') {
-        //     addPeerRoundTripLatency(startTime)
-        //     // Keep pinging until recording starts
-        //     if (mode === CASCADE_STANDBY) {
-        //         pingPeer(peer);
-        //     }
-        // }
     });
 
     dispatch({
@@ -97,18 +78,4 @@ export function handlePeerSignal(action, dispatch) {
     const existingPeer = peers[fromId];
     const peer = existingPeer || makeNewPeer(false, fromId, dispatch);
     peer.signal(signal);
-}
-
-export function getNextPeer(state) {
-    const { myId, order, peers } = getState();
-    const nextIndex = order.indexOf(myId) + 1;
-    const nextId = order[nextIndex];
-    return peers[nextId];
-}
-
-export function pingPeer(peer) {
-    peer.send(JSON.stringify({
-        type      : 'ping',
-        startTime : Date.now()
-    }));
 }
