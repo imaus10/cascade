@@ -1,7 +1,8 @@
 import Peer from 'simple-peer';
 import { changeMode, addCascadedStream } from './cascade';
+import { setStreamReceivedTime } from './recording';
 import { serverSend } from './server';
-import { CASCADE_DONE, CASCADE_STANDBY } from '../modes';
+import { CASCADE_DONE, READY, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export function checkForNewPeers(action, dispatch) {
@@ -36,7 +37,7 @@ function makeNewPeer(initiator, newId, dispatch) {
     });
 
     peer.on('stream', (theirStream) => {
-        const { mode } = getState();
+        const { mode, myId, order } = getState();
         if (mode === CASCADE_STANDBY) {
             addCascadedStream(theirStream, dispatch);
         } else {
@@ -45,6 +46,12 @@ function makeNewPeer(initiator, newId, dispatch) {
                 id     : newId,
                 stream : theirStream
             });
+            // Mark when the previous stream is first received to measure the play latency
+            // (the time it takes from receiving the stream to viewing the first frame)
+            const isPrev = order.indexOf(newId) === order.indexOf(myId) - 1;
+            if (mode === READY && isPrev) {
+                setStreamReceivedTime();
+            }
             // After cascading, if this is sent from downstream,
             // we need to reciprocate and reopen our stream as well
             if (mode === CASCADE_DONE && peer.streams.length === 0) {

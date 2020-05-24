@@ -5,12 +5,14 @@ import Countdown from './Countdown';
 import { Context } from '../Store';
 import usePrevious from '../../state/use-previous';
 import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
+import { setPlayLatency } from '../../state/actions/recording';
 import { serverSend } from '../../state/actions/server';
 
 const VideoSquare = ({ id, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
     const { audioOutput, iAmInitiator, mode, myId, order } = state;
     const isMe = id === myId;
+    const isFromPrevious = order.indexOf(id) === order.indexOf(myId) - 1;
     const prevStream = usePrevious(stream);
     const prevAudioOutput = usePrevious(audioOutput);
 
@@ -21,6 +23,12 @@ const VideoSquare = ({ id, numColumns, stream }) => {
                     node.srcObject = stream;
                 } else {
                     node.src = URL.createObjectURL(stream);
+                }
+                // TODO: what if the order changes?
+                if (isFromPrevious) {
+                    node.addEventListener('play', () => {
+                        setPlayLatency();
+                    });
                 }
             }
 
