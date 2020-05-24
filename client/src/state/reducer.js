@@ -49,12 +49,16 @@ function reducer(state, action) {
             // the prev one (they will be stopped shortly)
             let newStreams = streams;
             if (newMode === CASCADE_STANDBY || newMode === CASCADE_DONE) {
-                newStreams = {};
                 const myIndex = order.indexOf(myId);
                 const prevId = order[myIndex - 1];
-                if (prevId) {
-                    newStreams[prevId] = streams[prevId];
-                }
+                newStreams = Object.entries(streams).reduce((accumulator, [id, stream]) => {
+                    if (id === prevId) {
+                        return { [prevId] : stream };
+                    }
+                    // Stop the tracks, just in case
+                    stream.getTracks().forEach((track) => track.stop());
+                    return accumulator;
+                }, {});
             }
             return {
                 ...state,
