@@ -1,13 +1,13 @@
 import { serverSend } from './server';
 import { getState } from '../reducer';
 
-let streamReceivedTime;
-export function setStreamReceivedTime() {
-    streamReceivedTime = Date.now();
+const streamReceivedTimes = {};
+export function setStreamReceivedTime(id) {
+    streamReceivedTimes[id] = Date.now();
 }
-let playLatency;
-export function setPlayLatency() {
-    playLatency = Date.now() - streamReceivedTime;
+const playLatencies = {};
+export function setPlayLatency(id) {
+    playLatencies[id] = Date.now() - streamReceivedTimes[id];
 }
 let cascadeRecordingTime;
 export function setCascadeRecordingTime() {
@@ -15,7 +15,7 @@ export function setCascadeRecordingTime() {
 }
 let beforeRecordLatency;
 function setBeforeRecordLatency() {
-    beforeRecordLatency = Date.now() - cascadeRecordingTime
+    beforeRecordLatency = Date.now() - cascadeRecordingTime;
 }
 
 export function makeNewRecorder(stream, dispatch) {
@@ -35,7 +35,10 @@ export function makeNewRecorder(stream, dispatch) {
 }
 
 export function sendLatencyInfo() {
-    const { myId } = getState();
+    const { myId, order } = getState();
+    const prevIndex = order.indexOf(myId) - 1;
+    const prevId = order[prevIndex];
+    const playLatency = playLatencies[prevId];
     let latencyInfo = {
         type   : 'latency_info',
         fromId : myId,

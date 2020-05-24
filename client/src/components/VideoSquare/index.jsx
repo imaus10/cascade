@@ -12,7 +12,6 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     const [state, dispatch] = useContext(Context);
     const { audioOutput, iAmInitiator, mode, myId, order } = state;
     const isMe = id === myId;
-    const isFromPrevious = order.indexOf(id) === order.indexOf(myId) - 1;
     const prevStream = usePrevious(stream);
     const prevAudioOutput = usePrevious(audioOutput);
 
@@ -24,10 +23,9 @@ const VideoSquare = ({ id, numColumns, stream }) => {
                 } else {
                     node.src = URL.createObjectURL(stream);
                 }
-                // TODO: what if the order changes?
-                if (isFromPrevious) {
+                if (!isMe) {
                     node.addEventListener('play', () => {
-                        setPlayLatency();
+                        setPlayLatency(id);
                     });
                 }
             }
