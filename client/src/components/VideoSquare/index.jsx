@@ -1,55 +1,28 @@
-import React, { useCallback, useContext, useRef } from 'react';
+import React, { useContext, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
+import Video from './Video';
 import { Context } from '../Store';
-import usePrevious from '../../state/use-previous';
 import {
     CASCADE_DONE,
     CASCADE_RECORDING,
     CASCADE_STANDBY,
     READY
 } from '../../state/actions/cascade';
-import { setPlayLatency } from '../../state/actions/recording';
 import { serverSend } from '../../state/actions/server';
 
 const VideoSquare = ({
     col,
     id,
+    isMe,
     numColumns,
     orderNumber,
     row,
     stream
 }) => {
     const [state, dispatch] = useContext(Context);
-    const { audioOutput, iAmInitiator, mode, myId, order } = state;
-    const isMe = id === myId;
-    const prevStream = usePrevious(stream);
-    const prevAudioOutput = usePrevious(audioOutput);
-
-    const videoRef = useCallback((node) => {
-        if (node) {
-            if (stream !== prevStream) {
-                if ('srcObject' in node) {
-                    node.srcObject = stream;
-                } else {
-                    node.src = URL.createObjectURL(stream);
-                }
-                if (!isMe) {
-                    node.addEventListener('play', () => {
-                        setPlayLatency(id);
-                    });
-                }
-            }
-
-            if (audioOutput && audioOutput !== prevAudioOutput) {
-                // TODO: check if available, alert user if not
-                // (Firefox needs setting enabled)
-                // (Safari is ?)
-                node.setSinkId(audioOutput);
-            }
-        }
-    }, [audioOutput, stream]);
+    const { iAmInitiator, mode, myId, order } = state;
 
     const dndRef = useRef(null);
     const [{ isDragging }, connectDrag] = useDrag({
@@ -96,7 +69,7 @@ const VideoSquare = ({
 
     return (
         <div ref={dndRef} className="video-draggable" style={style}>
-            { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
+            <Video id={id} isMe={isMe} stream={stream} />
             { isMe && <AudioVideoSetup /> }
             { orderNumber > 0 &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }

@@ -33,7 +33,7 @@ const VideoGrid = () => {
 
     return (
         <main className="video-grid" style={gridStyles}>
-            <VideoSquare id={myId} stream={myStream} {...getOrderProps(myId)} />
+            <VideoSquare id={myId} isMe stream={myStream} {...getOrderProps(myId)} />
             { Object.entries(streams).map(([id, stream]) =>
                 <VideoSquare key={id} id={id} stream={stream} {...getOrderProps(id)} />
             ) }
