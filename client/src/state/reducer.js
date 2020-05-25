@@ -1,4 +1,4 @@
-import { CASCADE_DONE, CASCADE_STANDBY, READY, SETUP } from './modes';
+import { CASCADE_DONE, CASCADE_STANDBY, READY, SETUP } from './actions/cascade';
 import { makeNewRecorder } from './actions/recording';
 
 export const initialState = {

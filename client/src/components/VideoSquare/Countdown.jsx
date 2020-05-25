@@ -1,7 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
-import { CASCADE_STANDBY_DURATION, changeMode } from '../../state/actions/cascade';
-import { CASCADE_RECORDING } from '../../state/modes';
+import {
+    CASCADE_RECORDING,
+    CASCADE_STANDBY_DURATION,
+    changeMode
+} from '../../state/actions/cascade';
 
 const Countdown = () => {
     // Counts down to zero from here

@@ -2,8 +2,13 @@ import React, { useContext, useState } from 'react';
 import { Context } from './Store';
 import VideoSquare from './VideoSquare';
 import Welcome from './Welcome';
-import { startCascade, stopCascade } from '../state/actions/cascade';
-import { CASCADE_DONE, CASCADE_RECORDING, READY } from '../state/modes';
+import {
+    CASCADE_DONE,
+    CASCADE_RECORDING,
+    READY,
+    startCascade,
+    stopCascade
+} from '../state/actions/cascade';
 
 const GreenRoom = () => {
     const [state, dispatch] = useContext(Context);

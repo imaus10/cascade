@@ -1,8 +1,12 @@
 import Peer from 'simple-peer';
-import { changeMode, addCascadedStream } from './cascade';
+import {
+    CASCADE_DONE,
+    CASCADE_STANDBY,
+    addCascadedStream,
+    changeMode
+ } from './cascade';
 import { setStreamReceivedTime } from './recording';
 import { serverSend } from './server';
-import { CASCADE_DONE, CASCADE_STANDBY } from '../modes';
 import { getState } from '../reducer';
 
 export function checkForNewPeers(action, dispatch) {

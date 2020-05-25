@@ -4,7 +4,12 @@ import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
 import { Context } from '../Store';
 import usePrevious from '../../state/use-previous';
-import { CASCADE_DONE, CASCADE_RECORDING, CASCADE_STANDBY, READY } from '../../state/modes';
+import {
+    CASCADE_DONE,
+    CASCADE_RECORDING,
+    CASCADE_STANDBY,
+    READY
+} from '../../state/actions/cascade';
 import { setPlayLatency } from '../../state/actions/recording';
 import { serverSend } from '../../state/actions/server';
 
