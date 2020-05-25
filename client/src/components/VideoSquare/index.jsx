@@ -13,7 +13,14 @@ import {
 import { setPlayLatency } from '../../state/actions/recording';
 import { serverSend } from '../../state/actions/server';
 
-const VideoSquare = ({ id, numColumns, stream }) => {
+const VideoSquare = ({
+    col,
+    id,
+    numColumns,
+    orderNumber,
+    row,
+    stream
+}) => {
     const [state, dispatch] = useContext(Context);
     const { audioOutput, iAmInitiator, mode, myId, order } = state;
     const isMe = id === myId;
@@ -76,11 +83,7 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     connectDrag(dndRef);
     connectDrop(dndRef);
 
-    const orderNumber = order.indexOf(id) + 1;
-    const row = Math.ceil(orderNumber / numColumns);
-    const numBeforeRow = (row - 1) * numColumns;
-    const col = orderNumber - numBeforeRow;
-    const gridStyle = {
+    const style = {
         gridColumn : `${col} / span 1`,
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
@@ -92,7 +95,7 @@ const VideoSquare = ({ id, numColumns, stream }) => {
     };
 
     return (
-        <div ref={dndRef} className="video-draggable" style={gridStyle}>
+        <div ref={dndRef} className="video-draggable" style={style}>
             { stream && <video autoPlay muted={isMe} ref={videoRef} /> }
             { isMe && <AudioVideoSetup /> }
             { orderNumber > 0 &&
