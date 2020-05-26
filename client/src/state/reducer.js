@@ -50,19 +50,14 @@ function reducer(state, action) {
             const { mode : newMode } = action;
             // When starting or ending the cascade, remove all streams except
             // the prev one (they will be stopped shortly)
-            let newStreams = streams;
-            if (newMode === CASCADE_STANDBY || newMode === CASCADE_DONE) {
-                const myIndex = order.indexOf(myId);
-                const prevId = order[myIndex - 1];
-                newStreams = Object.entries(streams).reduce((accumulator, [id, stream]) => {
-                    if (id === prevId) {
-                        return { [prevId] : stream };
-                    }
-                    // Stop the tracks, just in case
-                    stream.getTracks().forEach((track) => track.stop());
-                    return accumulator;
-                }, {});
-            }
+            const myIndex = order.indexOf(myId);
+            const prevId = order[myIndex - 1];
+            const justPrevStream = prevId ?
+                { [prevId] : streams[prevId] } :
+                {};
+            const newStreams = newMode === CASCADE_STANDBY || newMode === CASCADE_DONE ?
+                justPrevStream :
+                streams;
             return {
                 ...state,
                 mode    : newMode,

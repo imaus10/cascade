@@ -1,5 +1,5 @@
 import { changeMode } from './cascade';
-import { checkForNewPeers, handlePeerSignal } from './peers';
+import { handleOrderSet, handlePeerSignal } from './peers';
 import { getState } from '../reducer';
 
 export function serverSend(sendAction) {
@@ -25,7 +25,7 @@ export function makeServer(serverURL, dispatch) {
                 changeMode(action.mode, dispatch);
                 break;
             case 'ORDER_SET':
-                checkForNewPeers(action, dispatch);
+                handleOrderSet(action, dispatch);
                 break;
             case 'PEER_SIGNAL':
                 handlePeerSignal(action, dispatch);

@@ -9,10 +9,11 @@ import { setStreamReceivedTime } from './recording';
 import { serverSend } from './server';
 import { getState } from '../reducer';
 
-export function checkForNewPeers(action, dispatch) {
+export function handleOrderSet(action, dispatch) {
     const { order : newOrder } = action;
-    const { myId, order : oldOrder, peers } = getState();
+    const { myId, order : oldOrder, peers, streams } = getState();
     dispatch(action);
+
     // If receiving order for the first time,
     // initialize a new peer for everyone else waiting
     if (oldOrder.length === 0) {
@@ -22,6 +23,16 @@ export function checkForNewPeers(action, dispatch) {
             }
         });
     }
+
+    // If peers have been removed, clean up the connections
+    const removedPeers = oldOrder.reduce((accumulator, id) => {
+        if (newOrder.includes(id)) return accumulator;
+        return accumulator.concat(id);
+    }, []);
+    removedPeers.forEach((id) => {
+        peers[id].destroy();
+        streams[id].getTracks().forEach((track) => track.stop());
+    });
 }
 
 function makeNewPeer(initiator, newId, dispatch) {
