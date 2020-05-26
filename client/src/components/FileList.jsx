@@ -6,13 +6,13 @@ const FileList = () => {
     const { files } = state;
     return (
         <aside>
-            { files.map((blobURL, index) =>
+            { files.map(([fileName, blobURL], index) =>
                 <a
                     key={blobURL}
-                    download={`cascade${index + 1}.webm`}
+                    download={fileName}
                     href={blobURL}
                 >
-                    Download cascade {index + 1} video
+                    Download your video for cascade {index + 1}
                 </a>) }
         </aside>
     );

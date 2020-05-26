@@ -22,9 +22,11 @@ export function makeNewRecorder(stream, dispatch) {
     // TODO: use specific codecs. check browser compatibility.
     const recorder = new MediaRecorder(stream, { mimeType : 'video/webm' });
     recorder.addEventListener('dataavailable', ({ data }) => {
+        const { files, myId, order } = getState();
         dispatch({
-            type : 'FILES_ADD',
-            file : URL.createObjectURL(data),
+            type     : 'FILES_ADD',
+            blobURL  : URL.createObjectURL(data),
+            fileName : `cascade${files.length + 1}_video${order.indexOf(myId) + 1}.webm`
         });
     });
     recorder.addEventListener('start', async () => {

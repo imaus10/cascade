@@ -41,7 +41,10 @@ function reducer(state, action) {
         case 'FILES_ADD':
             return {
                 ...state,
-                files : files.concat(action.file)
+                files : [
+                    ...files,
+                    [action.fileName, action.blobURL]
+                ]
             };
         case 'MODE_SET': {
             const { mode : newMode } = action;
