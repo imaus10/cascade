@@ -1,12 +1,10 @@
-import React, { useContext, useState } from 'react';
-import { Context } from './Store';
+import React, { useState } from 'react';
+import FileList from './FileList';
 import Navigation from './Navigation';
 import VideoGrid from './VideoGrid';
 import Welcome from './Welcome';
 
 const GreenRoom = () => {
-    const [state] = useContext(Context);
-    const { files } = state;
     const [showWelcome, setShowWelcome] = useState(true);
 
     if (showWelcome) {
@@ -16,16 +14,7 @@ const GreenRoom = () => {
     return <>
         <VideoGrid />
         <Navigation />
-        <aside>
-            { files.map((blobURL, index) =>
-                <a
-                    key={blobURL}
-                    download={`cascade${index + 1}.webm`}
-                    href={blobURL}
-                >
-                    Download cascade {index + 1} video
-                </a>) }
-        </aside>
+        <FileList />
     </>;
 };
 
