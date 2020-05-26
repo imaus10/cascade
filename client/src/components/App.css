@@ -73,3 +73,8 @@ label > * {
   top: 50%;
   transform: translate(-50%, -50%);
 }
+
+aside {
+  display: flex;
+  flex-direction: column;
+}
