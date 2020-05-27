@@ -4,7 +4,6 @@ import VideoSquare from './VideoSquare';
 
 const VideoGrid = () => {
     const [state] = useContext(Context);
-    console.log('STATE', state);
     const { myId, myStream, order, streams } = state;
 
     const numParticipants = Object.values(streams).length + 1;
