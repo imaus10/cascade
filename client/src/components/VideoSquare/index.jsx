@@ -1,4 +1,4 @@
-import React, { useContext, useRef } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
@@ -61,16 +61,21 @@ const VideoSquare = ({
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
     };
+    const [videoWidth, setVideoWidth] = useState(0);
+    const left = dndRef.current ?
+        `${((1 - (videoWidth / dndRef.current.clientWidth)) * 100 / 2) + 1}%` :
+        0;
     const orderNumberStyle = {
         backgroundColor : mode === CASCADE_STANDBY ? 'yellow' : (
             mode === CASCADE_RECORDING ? 'red' : 'green'
-        )
+        ),
+        left
     };
 
     return (
         <div ref={dndRef} className="video-draggable" style={style}>
-            <Video id={id} isMe={isMe} stream={stream} />
-            { isMe && <AudioVideoSetup /> }
+            <Video id={id} isMe={isMe} setVideoWidth={setVideoWidth} stream={stream} />
+            { isMe && <AudioVideoSetup right={left} /> }
             { orderNumber > 0 &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
             { mode === CASCADE_STANDBY && isMe && iAmInitiator &&

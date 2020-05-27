@@ -3,7 +3,7 @@ import { Context } from '../Store';
 import usePrevious from '../../state/use-previous';
 import { setPlayLatency } from '../../state/actions/recording';
 
-const Video = ({ id, isMe, stream }) => {
+const Video = ({ id, isMe, setVideoWidth, stream }) => {
     const [state] = useContext(Context);
     const { audioOutput } = state;
 
@@ -12,6 +12,9 @@ const Video = ({ id, isMe, stream }) => {
     const videoRef = useCallback((node) => {
         if (node) {
             if (stream !== prevStream) {
+                node.addEventListener('resize', (event) => {
+                    setVideoWidth(event.target.clientWidth);
+                });
                 if ('srcObject' in node) {
                     node.srcObject = stream;
                 } else {
