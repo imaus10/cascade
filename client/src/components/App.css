@@ -20,8 +20,10 @@ nav .big-button {
 
 .video-grid {
   display: grid;
-  flex: 1; /* fill the space above nav */
-  max-height: 100%;
+  /* fill the space above file list */
+  flex: 1;
+  /* allow it to shrink below content size to always show file list */
+  min-height: 0;
   width: 100%;
 }
 
@@ -30,7 +32,6 @@ nav .big-button {
   justify-content: center;
   position: relative;
 }
-
 
 .video-grid .video-draggable video {
   height: 100%;
