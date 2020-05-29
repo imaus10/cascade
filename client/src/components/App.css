@@ -46,7 +46,6 @@ nav .big-button {
   height: 2rem;
   justify-content: center;
   position: absolute;
-  top: 2%;
   width: 2rem;
 }
 
@@ -55,7 +54,6 @@ nav .big-button {
   display: flex;
   flex-direction: row;
   position: absolute;
-  top: 2%;
 }
 
 .video-grid .video-draggable .av-setup label {

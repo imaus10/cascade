@@ -5,7 +5,7 @@ import { Context } from '../Store';
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
-const AudioVideoSetup = ({ right }) => {
+const AudioVideoSetup = ({ style }) => {
     const [state, dispatch] = useContext(Context);
     const { audioOutput, myStream, peers } = state;
     const [devices, setDevices] = useState([]);
@@ -99,7 +99,7 @@ const AudioVideoSetup = ({ right }) => {
     }, [{}, {}, {}]);
 
     return (
-        <section className="av-setup" style={{ right }}>
+        <section className="av-setup" style={style}>
             { showSetup ? <>
                 { devicesSorted.map((deviceMap, index) => {
                     const devicesOfType = Object.values(deviceMap);

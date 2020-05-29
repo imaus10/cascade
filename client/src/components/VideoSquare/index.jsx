@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import AudioVideoSetup from './AudioVideoSetup';
 import Countdown from './Countdown';
@@ -61,22 +61,52 @@ const VideoSquare = ({
         gridRow    : `${row} / span 1`,
         opacity    : isDragging ? 0.5 : 1,
     };
-    const [videoWidth, setVideoWidth] = useState(0);
-    const left = dndRef.current ?
-        `${((1 - (videoWidth / dndRef.current.clientWidth)) * 100 / 2) + 1}%` :
-        0;
+
+    const [videoAspectRatio, setVideoAspectRatio] = useState(null);
+    const [left, setLeft] = useState(0);
+    const [top, setTop] = useState(0);
+    useEffect(() => {
+        const element = dndRef.current;
+        if (element && videoAspectRatio) {
+            const videoResizeObserver = new ResizeObserver((entries) => {
+                entries.forEach((entry) => {
+                    const { width, height } = entry.contentRect;
+                    // Try to fill height
+                    let videoHeight = height;
+                    let videoWidth = videoHeight * videoAspectRatio;
+                    // If width overflows, fill width
+                    if (videoWidth > width) {
+                        videoWidth = width;
+                        videoHeight = videoWidth / videoAspectRatio;
+                    }
+                    setLeft((width - videoWidth) / 2);
+                    setTop((height - videoHeight) / 2);
+                });
+            });
+            videoResizeObserver.observe(element);
+            return () => {
+                videoResizeObserver.disconnect();
+            };
+        }
+    }, [videoAspectRatio]);
+    const showOrderNumber = orderNumber > 0 && videoAspectRatio && dndRef.current;
     const orderNumberStyle = {
         backgroundColor : mode === CASCADE_STANDBY ? 'yellow' : (
             mode === CASCADE_RECORDING ? 'red' : 'green'
         ),
-        left
+        left            : `calc(${left}px + 1%)`,
+        top             : `calc(${top}px + 1%)`
+    };
+    const settingsButtonStyle = {
+        right : orderNumberStyle.left,
+        top   : orderNumberStyle.top
     };
 
     return (
         <div ref={dndRef} className="video-draggable" style={style}>
-            <Video id={id} isMe={isMe} setVideoWidth={setVideoWidth} stream={stream} />
-            { isMe && <AudioVideoSetup right={left} /> }
-            { orderNumber > 0 &&
+            <Video id={id} isMe={isMe} setVideoAspectRatio={setVideoAspectRatio} stream={stream} />
+            { isMe && <AudioVideoSetup style={settingsButtonStyle} /> }
+            { showOrderNumber &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
             { mode === CASCADE_STANDBY && isMe && iAmInitiator &&
                 <Countdown /> }
