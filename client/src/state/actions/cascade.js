@@ -1,3 +1,4 @@
+import { addStream, removeStream } from './peers';
 import { setCascadeRecordingTime } from './recording';
 import { serverSend } from './server';
 import { getState } from '../reducer';
@@ -24,6 +25,10 @@ function getNextPeer(state) {
     const nextIndex = order.indexOf(myId) + 1;
     const nextId = order[nextIndex];
     return peers[nextId];
+}
+
+export function cleanStream(stream) {
+    stream.getTracks().forEach((track) => track.stop());
 }
 
 function cascadeModeSet(mode) {
@@ -99,11 +104,9 @@ function setupCascade() {
     ];
     disconnectIds.forEach((id) => {
         const peer = peers[id];
-        const stream = peer.streams[0];
-        stream.getTracks().forEach((track) => {
-            track.stop();
-            peer.removeTrack(track, stream);
-        });
+        // There should only be one stream per peer in this stage
+        const stream = peer._sendStreams.pop();
+        removeStream(peer, stream);
     });
 
     // To start, send the stream from the previous peer
@@ -114,8 +117,8 @@ function setupCascade() {
     const myIndex = order.indexOf(myId);
     const prevId = order[myIndex - 1];
     if (prevId && nextPeer) {
-        const prevStream = streams[prevId].clone();
-        nextPeer.addStream(prevStream);
+        const prevStream = streams[prevId];
+        addStream(nextPeer, prevStream.clone());
     }
 }
 
@@ -133,7 +136,7 @@ export function addCascadedStream(stream, dispatch) {
 
     const nextPeer = getNextPeer();
     if (nextPeer) {
-        nextPeer.addStream(stream);
+        addStream(nextPeer, stream);
     }
 }
 
@@ -147,11 +150,10 @@ function resetStreams() {
     const nextPeer = getNextPeer();
     if (nextPeer) {
         // Remove the cascaded streams
-        // The streams stay in the order they're added
-        nextPeer.streams.slice(1).forEach((stream) => {
-            stream.getTracks().forEach((track) => track.stop());
-            nextPeer.removeStream(stream);
-        });
+        while (nextPeer._sendStreams.length > 1) {
+            const stream = nextPeer._sendStreams.pop();
+            removeStream(nextPeer, stream);
+        }
     }
 
     // Send live video back to everyone upstream
@@ -159,6 +161,6 @@ function resetStreams() {
     const beforeIds = getUpstreamIds();
     beforeIds.forEach((id) => {
         const peer = peers[id];
-        peer.addStream(myStream.clone());
+        addStream(peer, myStream.clone());
     });
 }

@@ -3,7 +3,8 @@ import {
     CASCADE_DONE,
     CASCADE_STANDBY,
     addCascadedStream,
-    changeMode
+    changeMode,
+    cleanStream
  } from './cascade';
 import { setStreamReceivedTime } from './recording';
 import { serverSend } from './server';
@@ -30,17 +31,25 @@ export function handleOrderSet(action, dispatch) {
         return accumulator.concat(id);
     }, []);
     removedPeers.forEach((id) => {
+        cleanStream(streams[id]);
         peers[id].destroy();
-        streams[id].getTracks().forEach((track) => track.stop());
     });
 }
 
 function makeNewPeer(initiator, newId, dispatch) {
     const { myId, myStream } = getState();
+    // Clone this because we'll stop the tracks during cascade,
+    // which would stop our view of ourself
+    const myStreamClone = myStream.clone();
     const peer = new Peer({
         initiator,
-        stream : myStream.clone()
+        stream : myStreamClone
     });
+    // Peer doesn't keep track of the sending streams.
+    // We're doing a bunch of stream cloning
+    // (because you can't send the same stream more than once :shrug:)
+    // so we need to keep track of the streams that were sent.
+    peer._sendStreams = [myStreamClone];
 
     peer.on('signal', (signal) => {
         serverSend({
@@ -56,18 +65,20 @@ function makeNewPeer(initiator, newId, dispatch) {
         if (mode === CASCADE_STANDBY) {
             addCascadedStream(theirStream, dispatch);
         } else {
+            // Mark when the stream is first received to measure the play latency
+            // (the time it takes from receiving the stream to viewing the first frame)
+            setStreamReceivedTime(newId);
             dispatch({
                 type   : 'STREAMS_ADD',
                 id     : newId,
                 stream : theirStream
             });
-            // Mark when the stream is first received to measure the play latency
-            // (the time it takes from receiving the stream to viewing the first frame)
-            setStreamReceivedTime(newId);
             // After cascading, if this is sent from downstream,
             // we need to reciprocate and reopen our stream as well
-            if (mode === CASCADE_DONE && peer.streams.length === 0) {
-                peer.addStream(myStream.clone());
+            // (except for the next peer, which we're already streaming to)
+            if (mode === CASCADE_DONE && peer._sendStreams.length === 0) {
+                const streamClone = myStream.clone();
+                addStream(peer, streamClone);
             }
         }
     });
@@ -97,4 +108,14 @@ export function handlePeerSignal(action, dispatch) {
     const existingPeer = peers[fromId];
     const peer = existingPeer || makeNewPeer(false, fromId, dispatch);
     peer.signal(signal);
+}
+
+export function addStream(peer, stream) {
+    peer.addStream(stream);
+    peer._sendStreams.push(stream);
+}
+
+export function removeStream(peer, stream) {
+    cleanStream(stream);
+    peer.removeStream(stream);
 }
