@@ -126,14 +126,6 @@ function reducer(state, action) {
                     [action.id] : action.stream
                 }
             };
-        case 'STREAMS_REMOVE': {
-            const newStreams = { ...streams };
-            delete newStreams[action.id];
-            return {
-                ...state,
-                streams : newStreams
-            };
-        }
         default: {
             console.error('Unknown action:', action);
             return state;
