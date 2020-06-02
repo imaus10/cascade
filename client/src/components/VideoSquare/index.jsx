@@ -62,6 +62,8 @@ const VideoSquare = ({
         opacity    : isDragging ? 0.5 : 1,
     };
 
+    // This ridiculousness is to make the order number &
+    // settings button hover over the video
     const [videoAspectRatio, setVideoAspectRatio] = useState(null);
     const [left, setLeft] = useState(0);
     const [top, setTop] = useState(0);
