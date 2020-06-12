@@ -1,9 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
-
-// Safari, what the hell.
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+import { addStream, popStream } from '../../state/actions/peers';
+import { makeBlipStream, makeRecorder } from '../../state/actions/recording';
 
 const AudioVideoSetup = ({ style }) => {
     const [state, dispatch] = useContext(Context);
@@ -18,45 +16,6 @@ const AudioVideoSetup = ({ style }) => {
             deviceId
         });
     }
-
-    const setStream = async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio : {
-                deviceId         : audioInput && {
-                    exact : audioInput
-                },
-                // These cause latency
-                autoGainControl  : { exact : false },
-                echoCancellation : false,
-                noiseSuppression : { exact : false },
-            },
-            video : {
-                deviceId : videoInput && {
-                    exact : videoInput
-                }
-            }
-        });
-        if (myStream) {
-            myStream.getTracks().forEach((track) => track.stop());
-            Object.values(peers).forEach((peer) => {
-                peer.removeStream(myStream)
-                peer.addStream(stream);
-            });
-        }
-        // Strangely, there is a delay when hearing the audio via the video element.
-        // But the delay is noticeably shorter when using the Web Audio API...
-        // (But only in Chrome?)
-        const source = audioCtx.createMediaStreamSource(stream);
-        // TODO: set output properly. See:
-        // https://stackoverflow.com/questions/41863094/how-to-select-destination-output-device-using-web-audio-api
-        source.connect(audioCtx.destination);
-        dispatch({
-            type : 'MY_STREAM_SET',
-            // Need to dispatch in the recorder ondataavailable event listener
-            dispatch,
-            stream
-        });
-    };
 
     useEffect(() => {
         // On Safari, enumerateDevices only works after getUserMedia is called.
@@ -74,6 +33,36 @@ const AudioVideoSetup = ({ style }) => {
     useEffect(() => {
         // Called on the first render
         // (and any time audioInput or videoInput change)
+        const setStream = async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio : {
+                    deviceId         : audioInput && { exact : audioInput },
+                    // These cause latency
+                    autoGainControl  : { exact : false },
+                    echoCancellation : false,
+                    noiseSuppression : { exact : false },
+                },
+                video : {
+                    deviceId : videoInput && { exact : videoInput }
+                }
+            });
+
+            // Record the unprocessed input
+            makeRecorder(stream, dispatch);
+
+            const sendStream = makeBlipStream(stream);
+            if (myStream) {
+                Object.values(peers).forEach((peer) => {
+                    popStream(peer);
+                    addStream(peer, sendStream);
+                });
+            }
+
+            dispatch({
+                type   : 'MY_STREAM_SET',
+                stream : sendStream
+            });
+        };
         setStream();
     }, [audioInput, videoInput]);
 

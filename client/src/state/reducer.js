@@ -1,5 +1,4 @@
 import { CASCADE_DONE, CASCADE_STANDBY, READY, SETUP } from './actions/cascade';
-import { makeNewRecorder } from './actions/recording';
 
 export const initialState = {
     // This needs to be stored here so all video elements output sound to the same place.
@@ -20,8 +19,6 @@ export const initialState = {
     // Direct connections to other participants via WebRTC that provide the streams
     // Keys are the server-generated IDs
     peers         : {},
-    // Records myStream during cascade
-    recorder      : null,
     // WebSocket server connection to send the initial WebRTC signals (and a biiiit more after)
     server        : null,
     // MediaStream objects for remote peers
@@ -76,7 +73,6 @@ function reducer(state, action) {
                 ...state,
                 mode     : newMode,
                 myStream : action.stream,
-                recorder : makeNewRecorder(action.stream, action.dispatch)
             };
         }
         case 'ORDER_SET': {

@@ -1,7 +1,6 @@
 import React, { useCallback, useContext } from 'react';
 import { Context } from '../Store';
 import usePrevious from '../../state/use-previous';
-import { setPlayLatency } from '../../state/actions/recording';
 
 const Video = ({ id, isMe, setVideoAspectRatio, stream }) => {
     const [state] = useContext(Context);
@@ -19,11 +18,6 @@ const Video = ({ id, isMe, setVideoAspectRatio, stream }) => {
                     node.srcObject = stream;
                 } else {
                     node.src = URL.createObjectURL(stream);
-                }
-                if (!isMe) {
-                    node.addEventListener('play', () => {
-                        setPlayLatency(id);
-                    });
                 }
             }
 
