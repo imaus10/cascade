@@ -64,11 +64,6 @@ let myAudioDestination;
 export function makeBlipStream(stream) {
     myAudioSource = audioCtx.createMediaStreamSource(stream);
     // Play the unprocessed input
-    // Strangely, there is a delay when hearing the audio via the video element.
-    // But the delay is noticeably shorter when using the Web Audio API...
-    // (But only in Chrome?)
-    // TODO: set device output properly. See:
-    // https://stackoverflow.com/questions/41863094/how-to-select-destination-output-device-using-web-audio-api
     myAudioSource.connect(audioCtx.destination);
 
     myAudioDestination = audioCtx.createMediaStreamDestination();
@@ -101,7 +96,7 @@ export function sendBlip(frequency) {
     blipper.stop(audioCtx.currentTime + 0.2);
 }
 
-export function reconnectAudioOutput() {
+function reconnectAudioOutput() {
     myAudioSource.connect(myAudioDestination);
 }
 
@@ -110,25 +105,41 @@ export function connectBlipListener(stream) {
     blipSource.connect(analyzer);
 }
 
-export const NUM_BLIPS = 3;
+export const END_FREQ = 880;
+const endFreqBinIndex = Math.floor(END_FREQ / freqResolution);
 export function listenToBlips(dispatch) {
     let blippin = false;
-    let blipCount = 0;
     const intervalId = setInterval(() => {
+        // Get the index of the highest-energy frequency bin
         analyzer.getByteFrequencyData(freqArray);
-        const totalEnergy = freqArray.reduce(
-            (accumulator, freqBinEnergy) => accumulator + freqBinEnergy,
-            0
+        let maxEnergy = 0;
+        const maxEnergyIndex = freqArray.reduce(
+            (accumulator, freqBinEnergy, index) => {
+                if (freqBinEnergy > maxEnergy) {
+                    maxEnergy = freqBinEnergy;
+                    return index;
+                }
+                return accumulator;
+            },
+            -1
         );
-        if (totalEnergy > 0 && !blippin) {
+
+        // maxEnergyIndex === -1 means silence
+        if (maxEnergyIndex !== -1 && !blippin) {
             blippin = true;
-            blipCount += 1;
-            if (blipCount === NUM_BLIPS) {
+            // const binLow = Math.floor(maxEnergyIndex * freqResolution);
+            // const binHigh = Math.floor((maxEnergyIndex + 1) * freqResolution);
+            // console.log(`max energy: ${binLow}-${binHigh} Hz`);
+            if (maxEnergyIndex === endFreqBinIndex) {
                 clearInterval(intervalId);
                 changeMode(CASCADE_RECORDING, dispatch);
+                const { iAmInitiator } = getState();
+                if (iAmInitiator) {
+                    reconnectAudioOutput();
+                }
             }
         }
-        if (blippin && totalEnergy === 0) {
+        if (maxEnergyIndex === -1 && blippin) {
             blippin = false;
         }
     }, timeResolution);
