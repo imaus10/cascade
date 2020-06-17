@@ -46,22 +46,34 @@ export function sendLatencyInfo() {
 // All the Web Audio API stuff below is to precisely signal
 // when to start recording. When the initiator starts the cascade,
 // it silences its audio stream and sends a series of blips.
-// The start of the last blip signals recording start.
+// The start of the last blip (at END_FREQ Hz) signals recording start.
 // This is called in-band signaling.
 
-// Safari, what the hell.
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-export const audioCtx = new AudioContext();
-
-const analyzer = audioCtx.createAnalyser();
-analyzer.fftSize = 1024;
-const freqResolution = audioCtx.sampleRate / analyzer.fftSize;
-const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
-const freqArray = new Uint8Array(analyzer.frequencyBinCount);
+let audioCtx;
+let analyzer;
+let freqResolution;
+let timeResolution
+let freqArray;
+export const END_FREQ = 880;
+let endFreqBinIndex;
+function initAudioCtx() {
+    // Safari, what the hell.
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+    analyzer = audioCtx.createAnalyser();
+    analyzer.fftSize = 1024;
+    freqResolution = audioCtx.sampleRate / analyzer.fftSize;
+    timeResolution = Math.floor(1 / freqResolution * 1000); // ms
+    freqArray = new Uint8Array(analyzer.frequencyBinCount);
+    endFreqBinIndex = Math.floor(END_FREQ / freqResolution);
+}
 
 let myAudioSource;
 let myAudioDestination;
 export function makeBlipStream(stream) {
+    if (!audioCtx) {
+        initAudioCtx();
+    }
     myAudioSource = audioCtx.createMediaStreamSource(stream);
     // Play the unprocessed input
     myAudioSource.connect(audioCtx.destination);
@@ -105,8 +117,6 @@ export function connectBlipListener(stream) {
     blipSource.connect(analyzer);
 }
 
-export const END_FREQ = 880;
-const endFreqBinIndex = Math.floor(END_FREQ / freqResolution);
 export function listenToBlips(dispatch) {
     let blippin = false;
     const intervalId = setInterval(() => {
