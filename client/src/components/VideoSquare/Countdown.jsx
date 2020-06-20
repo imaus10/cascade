@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { sendBlip, END_FREQ } from '../../state/actions/recording';
+import { beepFreqs, sendBlip } from '../../state/actions/recording';
 
 const CASCADE_STANDBY_DURATION = 6000; // milliseconds
 
@@ -11,7 +11,7 @@ const Countdown = () => {
         if (number > 0) {
             setTimeout(() => {
                 const newNumber = number - 1;
-                sendBlip(newNumber > 0 ? END_FREQ / 2 : END_FREQ);
+                sendBlip(newNumber > 0 ? beepFreqs[0] : beepFreqs[1]);
                 setNumber(newNumber);
             }, CASCADE_STANDBY_DURATION / startCount);
         }

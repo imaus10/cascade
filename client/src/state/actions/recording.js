@@ -51,21 +51,12 @@ export function sendLatencyInfo() {
 
 let audioCtx;
 let analyzer;
-let freqResolution;
-let timeResolution
-let freqArray;
-export const END_FREQ = 880;
-let endFreqBinIndex;
 function initAudioCtx() {
     // Safari, what the hell.
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContext();
     analyzer = audioCtx.createAnalyser();
     analyzer.fftSize = 1024;
-    freqResolution = audioCtx.sampleRate / analyzer.fftSize;
-    timeResolution = Math.floor(1 / freqResolution * 1000); // ms
-    freqArray = new Uint8Array(analyzer.frequencyBinCount);
-    endFreqBinIndex = Math.floor(END_FREQ / freqResolution);
 }
 
 let myAudioSource;
@@ -93,6 +84,7 @@ export function silenceAudioOutput() {
 }
 
 export function sendBlip(frequency) {
+    console.log('SENDING BLIP');
     const blipper = audioCtx.createOscillator();
     blipper.frequency.value = frequency;
 
@@ -117,30 +109,49 @@ export function connectBlipListener(stream) {
     blipSource.connect(analyzer);
 }
 
+export const beepFreqs = [440, 880];
 export function listenToBlips(dispatch) {
+    const freqResolution = audioCtx.sampleRate / analyzer.fftSize;
+    const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
+    const freqArray = new Uint8Array(analyzer.frequencyBinCount);
+    const freqBinIndices = beepFreqs.map((freq) => Math.floor(freq / freqResolution));
+
     let blippin = false;
     const intervalId = setInterval(() => {
-        // Get the index of the highest-energy frequency bin
         analyzer.getByteFrequencyData(freqArray);
-        let maxEnergy = 0;
-        const maxEnergyIndex = freqArray.reduce(
-            (accumulator, freqBinEnergy, index) => {
-                if (freqBinEnergy > maxEnergy) {
-                    maxEnergy = freqBinEnergy;
+        // Check which of the expected freq bins has a higher energy
+        const maxFreqIndex = freqBinIndices.reduce(
+            (currentMaxIndex, freqBinIndex, index) => {
+                const energy = freqArray[freqBinIndex];
+                const currentMaxEnergy = freqArray[freqBinIndices[currentMaxIndex]] || 0;
+                if (energy > 0 && energy > currentMaxEnergy) {
                     return index;
                 }
-                return accumulator;
+                return currentMaxIndex;
             },
             -1
         );
 
-        // maxEnergyIndex === -1 means silence
-        if (maxEnergyIndex !== -1 && !blippin) {
+        // if (maxFreqIndex !== -1) {
+        //     const freqStrings = freqArray.reduce((accumulator, freqBinEnergy, index) => {
+        //         if (freqBinEnergy > 0) {
+        //             const binLow = Math.floor(index * freqResolution);
+        //             const binHigh = Math.floor((index + 1) * freqResolution);
+        //             return [
+        //                 ...accumulator,
+        //                 `${binLow}-${binHigh}: ${freqBinEnergy}`
+        //             ];
+        //         }
+        //         return accumulator;
+        //     }, []);
+        //     console.log(freqStrings.join('\t'));
+        // }
+
+        // maxFreqIndex === -1 means silence
+        if (maxFreqIndex !== -1 && !blippin) {
             blippin = true;
-            // const binLow = Math.floor(maxEnergyIndex * freqResolution);
-            // const binHigh = Math.floor((maxEnergyIndex + 1) * freqResolution);
-            // console.log(`max energy: ${binLow}-${binHigh} Hz`);
-            if (maxEnergyIndex === endFreqBinIndex) {
+            console.log(`HEARD BLIP @ ${beepFreqs[maxFreqIndex]}`);
+            if (maxFreqIndex === beepFreqs.length - 1) {
                 clearInterval(intervalId);
                 changeMode(CASCADE_RECORDING, dispatch);
                 const { iAmInitiator } = getState();
@@ -149,7 +160,7 @@ export function listenToBlips(dispatch) {
                 }
             }
         }
-        if (maxEnergyIndex === -1 && blippin) {
+        if (maxFreqIndex === -1 && blippin) {
             blippin = false;
         }
     }, timeResolution);
