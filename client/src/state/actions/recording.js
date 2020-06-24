@@ -117,10 +117,12 @@ export async function listenToBlips(dispatch) {
     const freqBins = new Uint8Array(analyzer.frequencyBinCount);
     const expectedFreqIndices = beepFreqs.map((freq) => Math.floor(freq / freqResolution));
 
+    let waitingForSilence = true;
     let blippin = false;
     const intervalId = setInterval(() => {
         analyzer.getByteFrequencyData(freqBins);
         // Get the index of the frequency bin with the highest energy
+        // maxEnergyIndex === -1 means silence
         const maxEnergyIndex = freqBins.reduce(
             (currentMaxIndex, energy, index) => {
                 const currentMaxEnergy = freqBins[currentMaxIndex] || 0;
@@ -131,6 +133,12 @@ export async function listenToBlips(dispatch) {
             },
             -1
         );
+
+        // Wait for silence to begin listening for blips
+        if (waitingForSilence) {
+            if (maxEnergyIndex !== -1) return;
+            waitingForSilence = false;
+        }
 
         // if (maxFreqIndex !== -1) {
         //     const freqStrings = freqArray.reduce((accumulator, freqBinEnergy, index) => {
@@ -147,7 +155,6 @@ export async function listenToBlips(dispatch) {
         //     console.log(freqStrings.join('\t'));
         // }
 
-        // maxEnergyIndex === -1 means silence
         if (maxEnergyIndex !== -1 && !blippin && expectedFreqIndices.includes(maxEnergyIndex)) {
             blippin = true;
             const freqIndex = expectedFreqIndices.indexOf(maxEnergyIndex);
