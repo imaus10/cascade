@@ -50,13 +50,10 @@ export function sendLatencyInfo() {
 // This is called in-band signaling.
 
 let audioCtx;
-let analyzer;
 function initAudioCtx() {
     // Safari, what the hell.
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContext();
-    analyzer = audioCtx.createAnalyser();
-    analyzer.fftSize = 1024;
 }
 
 let myAudioSource;
@@ -104,26 +101,29 @@ function reconnectAudioOutput() {
     myAudioSource.connect(myAudioDestination);
 }
 
+let analyzer;
+let blipSource;
 export function connectBlipListener(stream) {
-    const blipSource = audioCtx.createMediaStreamSource(stream);
+    blipSource = audioCtx.createMediaStreamSource(stream);
     blipSource.connect(analyzer);
 }
 
 export const beepFreqs = [440, 880];
-export function listenToBlips(dispatch) {
+export async function listenToBlips(dispatch) {
+    analyzer = audioCtx.createAnalyser();
+    analyzer.fftSize = 1024;
     const freqResolution = audioCtx.sampleRate / analyzer.fftSize;
     const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
-    const freqArray = new Uint8Array(analyzer.frequencyBinCount);
-    const freqBinIndices = beepFreqs.map((freq) => Math.floor(freq / freqResolution));
+    const freqBins = new Uint8Array(analyzer.frequencyBinCount);
+    const expectedFreqIndices = beepFreqs.map((freq) => Math.floor(freq / freqResolution));
 
     let blippin = false;
     const intervalId = setInterval(() => {
-        analyzer.getByteFrequencyData(freqArray);
-        // Check which of the expected freq bins has a higher energy
-        const maxFreqIndex = freqBinIndices.reduce(
-            (currentMaxIndex, freqBinIndex, index) => {
-                const energy = freqArray[freqBinIndex];
-                const currentMaxEnergy = freqArray[freqBinIndices[currentMaxIndex]] || 0;
+        analyzer.getByteFrequencyData(freqBins);
+        // Get the index of the frequency bin with the highest energy
+        const maxEnergyIndex = freqBins.reduce(
+            (currentMaxIndex, energy, index) => {
+                const currentMaxEnergy = freqBins[currentMaxIndex] || 0;
                 if (energy > 0 && energy > currentMaxEnergy) {
                     return index;
                 }
@@ -147,20 +147,23 @@ export function listenToBlips(dispatch) {
         //     console.log(freqStrings.join('\t'));
         // }
 
-        // maxFreqIndex === -1 means silence
-        if (maxFreqIndex !== -1 && !blippin) {
+        // maxEnergyIndex === -1 means silence
+        if (maxEnergyIndex !== -1 && !blippin && expectedFreqIndices.includes(maxEnergyIndex)) {
             blippin = true;
-            console.log(`HEARD BLIP @ ${beepFreqs[maxFreqIndex]}`);
-            if (maxFreqIndex === beepFreqs.length - 1) {
+            const freqIndex = expectedFreqIndices.indexOf(maxEnergyIndex);
+            console.log(`HEARD BLIP @ ${beepFreqs[freqIndex]}`);
+            if (freqIndex === beepFreqs.length - 1) {
                 clearInterval(intervalId);
                 changeMode(CASCADE_RECORDING, dispatch);
                 const { iAmInitiator } = getState();
                 if (iAmInitiator) {
                     reconnectAudioOutput();
+                } else {
+                    blipSource.disconnect(analyzer);
                 }
             }
         }
-        if (maxFreqIndex === -1 && blippin) {
+        if (maxEnergyIndex === -1 && blippin) {
             blippin = false;
         }
     }, timeResolution);

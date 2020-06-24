@@ -54,8 +54,8 @@ export function changeMode(newMode, dispatch) {
 
     switch (newMode) {
         case CASCADE_STANDBY:
-            setupCascade();
             listenToBlips(dispatch);
+            setupCascade();
             break;
         case CASCADE_RECORDING:
             startRecording();
