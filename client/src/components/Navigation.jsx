@@ -3,6 +3,7 @@ import { Context } from './Store';
 import {
     CASCADE_DONE,
     CASCADE_RECORDING,
+    CASCADE_STANDBY,
     READY,
     startCascade,
     stopCascade
@@ -20,7 +21,8 @@ const Navigation = () => {
                 >
                     GO
                 </button> }
-            { mode === CASCADE_RECORDING && iAmInitiator &&
+            { /*mode === CASCADE_RECORDING && iAmInitiator &&*/
+                mode === CASCADE_STANDBY &&
                 <button
                     className="big-button"
                     onClick={() => stopCascade(dispatch)}

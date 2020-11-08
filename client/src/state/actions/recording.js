@@ -1,4 +1,4 @@
-import { CASCADE_RECORDING, changeMode } from './cascade';
+import { CASCADE_DONE, getNextPeer } from './cascade';
 import { serverSend } from './server';
 import { getState } from '../reducer';
 
@@ -43,83 +43,82 @@ export function sendLatencyInfo() {
     serverSend(latencyInfo);
 }
 
-// All the Web Audio API stuff below is to precisely signal
-// when to start recording. When the initiator starts the cascade,
-// it silences its audio stream and sends a series of blips.
-// The start of the last blip (at END_FREQ Hz) signals recording start.
-// This is called in-band signaling.
+// All the Web Audio API stuff below is to help match signals later.
+// When the initiator starts the cascade, it sends a series of blips.
+// The start of the 4th blip (at END_FREQ Hz) signals recording start.
 
-let audioCtx;
-function initAudioCtx() {
-    // Safari, what the hell.
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContext();
-}
-
-let myAudioSource;
-let myAudioDestination;
-export function makeBlipStream(stream) {
-    if (!audioCtx) {
-        initAudioCtx();
+let _audioCtx;
+function audioCtx() {
+    if (!_audioCtx) {
+        // Safari, what the hell.
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        _audioCtx = new AudioContext();
     }
-    myAudioSource = audioCtx.createMediaStreamSource(stream);
-    // Play the unprocessed input
-    myAudioSource.connect(audioCtx.destination);
-
-    myAudioDestination = audioCtx.createMediaStreamDestination();
-    myAudioSource.connect(myAudioDestination);
-
-    const blipStream = myAudioDestination.stream;
-    // Add the video track(s) back to the blip'd audio stream
-    const videoTracks = stream.getVideoTracks();
-    videoTracks.forEach((track) => blipStream.addTrack(track.clone()));
-    return blipStream;
+    return _audioCtx;
 }
 
-export function silenceAudioOutput() {
-    myAudioSource.disconnect(myAudioDestination);
+// TODO: make these controllable?
+const blipFreq = 440;
+// Interesting phenomenon:
+// at higher than 40 BPM, when analyzing the streamed blips, there is no silence.
+const bpm = 100;
+const gainValue = 0.1;
+const blipLength = 0.25; // seconds
+export function sendBlips(dispatch) {
+    console.log("SENDING BLIPS");
+    const blipDest = audioCtx().createMediaStreamDestination();
+    const blipStream = blipDest.stream;
+    const nextPeer = getNextPeer();
+    // use addStream() so we can use popStream()?
+    nextPeer.addStream(blipStream);
+
+    const makeBlip = () => {
+        const { mode } = getState();
+        if (mode === CASCADE_DONE) {
+            window.clearInterval(blipIntervalId);
+            // TODO: more cleanup
+        }
+        // TODO: use gain instead of making new nodes every time
+        const osc = audioCtx().createOscillator();
+        osc.frequency.value = blipFreq;
+        const blipper = audioCtx().createGain();
+        blipper.gain.value = gainValue;
+        osc.connect(blipper);
+        // Send to the speakers
+        blipper.connect(audioCtx().destination);
+        // Send to the analyzer to signal start recording
+        listenToBlips(osc, dispatch);
+        // And send to the cascade
+        blipper.connect(blipDest);
+        osc.start();
+        osc.stop(audioCtx().currentTime + blipLength)
+    };
+
+    const bps = bpm / 60; // beats per second
+    const beatInterval = 1000 / bps; // ms between beats
+    const blipIntervalId = window.setInterval(makeBlip, beatInterval);
 }
 
-export function sendBlip(frequency) {
-    console.log('SENDING BLIP');
-    const blipper = audioCtx.createOscillator();
-    blipper.frequency.value = frequency;
-
-    const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.25;
-
-    blipper.connect(gainNode);
-    gainNode.connect(myAudioDestination);
-    gainNode.connect(audioCtx.destination);
-    gainNode.connect(analyzer);
-
-    blipper.start();
-    blipper.stop(audioCtx.currentTime + 0.2);
+export function connectBlipListener(blipStream, dispatch) {
+    const blipSource = audioCtx().createMediaStreamSource(blipStream);
+    listenToBlips(blipSource, dispatch);
+    // Send to the speakers
+    blipSource.connect(audioCtx().destination);
 }
 
-function reconnectAudioOutput() {
-    myAudioSource.connect(myAudioDestination);
-}
-
-let analyzer;
-let blipSource;
-export function connectBlipListener(stream) {
-    blipSource = audioCtx.createMediaStreamSource(stream);
-    blipSource.connect(analyzer);
-}
-
-export const beepFreqs = [440, 880];
-export async function listenToBlips(dispatch) {
-    analyzer = audioCtx.createAnalyser();
+export async function listenToBlips(blipSourceNode, dispatch) {
+    console.log("LISTENING TO BLIPS");
+    const analyzer = audioCtx().createAnalyser();
     analyzer.fftSize = 1024;
-    const freqResolution = audioCtx.sampleRate / analyzer.fftSize;
+    blipSourceNode.connect(analyzer);
+
+    const freqResolution = audioCtx().sampleRate / analyzer.fftSize;
     const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
     const freqBins = new Uint8Array(analyzer.frequencyBinCount);
-    const expectedFreqIndices = beepFreqs.map((freq) => Math.floor(freq / freqResolution));
+    const expectedFreqIndex = Math.floor(blipFreq / freqResolution);
 
-    let waitingForSilence = true;
     let blippin = false;
-    const intervalId = setInterval(() => {
+    const analyzerIntervalId = setInterval(() => {
         analyzer.getByteFrequencyData(freqBins);
         // Get the index of the frequency bin with the highest energy
         // maxEnergyIndex === -1 means silence
@@ -134,12 +133,7 @@ export async function listenToBlips(dispatch) {
             -1
         );
 
-        // Wait for silence to begin listening for blips
-        if (waitingForSilence) {
-            if (maxEnergyIndex !== -1) return;
-            waitingForSilence = false;
-        }
-
+        // Helpful for debugging:
         // if (maxFreqIndex !== -1) {
         //     const freqStrings = freqArray.reduce((accumulator, freqBinEnergy, index) => {
         //         if (freqBinEnergy > 0) {
@@ -155,20 +149,17 @@ export async function listenToBlips(dispatch) {
         //     console.log(freqStrings.join('\t'));
         // }
 
-        if (maxEnergyIndex !== -1 && !blippin && expectedFreqIndices.includes(maxEnergyIndex)) {
+        if (maxEnergyIndex !== -1 && !blippin) {
             blippin = true;
-            const freqIndex = expectedFreqIndices.indexOf(maxEnergyIndex);
-            console.log(`HEARD BLIP @ ${beepFreqs[freqIndex]}`);
-            if (freqIndex === beepFreqs.length - 1) {
-                clearInterval(intervalId);
-                changeMode(CASCADE_RECORDING, dispatch);
-                const { iAmInitiator } = getState();
-                if (iAmInitiator) {
-                    reconnectAudioOutput();
-                } else {
-                    blipSource.disconnect(analyzer);
-                }
-            }
+            const binLow = Math.floor(maxEnergyIndex * freqResolution);
+            const binHigh = Math.floor((maxEnergyIndex + 1) * freqResolution);
+            console.log(`HEARD BLIP @ ${binLow}-${binHigh}Hz (bin ${maxEnergyIndex}, waiting for ${expectedFreqIndex})`);
+            // const { mode } = getState();
+            // if (mode === CASCADE_STANDBY) {
+            //     changeMode(CASCADE_RECORDING, dispatch);
+            // }
+            // clearInterval(intervalId);
+            // blipSourceNode.disconnect(analyzer);
         }
         if (maxEnergyIndex === -1 && blippin) {
             blippin = false;

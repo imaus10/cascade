@@ -1,8 +1,7 @@
 import { addStream, popStream } from './peers';
 import {
     connectBlipListener,
-    listenToBlips,
-    silenceAudioOutput,
+    sendBlips,
     startRecording,
     stopRecording
 } from './recording';
@@ -25,7 +24,8 @@ export const CASCADE_RECORDING = 3;
 // Upstream peers should only send their video downstream after the downstream peers have finished.
 export const CASCADE_DONE = 4;
 
-function getNextPeer(state) {
+
+export function getNextPeer() {
     const { myId, order, peers } = getState();
     const nextIndex = order.indexOf(myId) + 1;
     const nextId = order[nextIndex];
@@ -54,14 +54,13 @@ export function changeMode(newMode, dispatch) {
 
     switch (newMode) {
         case CASCADE_STANDBY:
-            listenToBlips(dispatch);
             setupCascade();
             break;
         case CASCADE_RECORDING:
             startRecording();
             break;
         case CASCADE_DONE:
-            stopRecording();
+            // stopRecording();
             cascadeModeSet(CASCADE_DONE);
             resetStreams();
             break;
@@ -81,7 +80,7 @@ export function startCascade(dispatch) {
     };
     serverSend(action);
     changeMode(mode, dispatch);
-    silenceAudioOutput();
+    sendBlips(dispatch);
 }
 
 export function getDownstreamIds() {
@@ -97,7 +96,7 @@ export function getUpstreamIds() {
 }
 
 function setupCascade() {
-    const { myId, order, peers, streams } = getState();
+    const { peers } = getState();
 
     // Disconnect stream from all upstream peers
     // and all downstream peers except the one right after
@@ -110,52 +109,51 @@ function setupCascade() {
         // There should only be one stream per peer in this stage
         popStream(peer);
     });
-
-    // To start, send the stream from the previous peer
-    // to the next peer in the cascade.
-    // The rest of the streams will come with the peer stream event,
-    // which calls addCascadedStream()
-    const nextPeer = getNextPeer();
-    const myIndex = order.indexOf(myId);
-    const prevId = order[myIndex - 1];
-    const prevStream = streams[prevId];
-    if (prevStream && nextPeer) {
-        addStream(nextPeer, prevStream.clone());
-    }
-
-    // If the previous peer is the initiator,
-    // listen to blips to signal start recording
-    if (prevId === order[0]) {
-        connectBlipListener(prevStream);
-    }
 }
 
 export function addCascadedStream(stream, dispatch) {
-    const { order, streams } = getState();
-
-    // Find the next upstream id from here that doesn't have a stream set
-    const upstreamIds = getUpstreamIds().slice(0, -1).reverse();
-    const id = upstreamIds.find((upstreamId) => !streams[upstreamId]);
-    dispatch({
-        type : 'STREAMS_ADD',
-        id,
-        stream,
-    });
-
-    // If the stream is from the initiator,
-    // listen to the blips to signal start recording
-    if (id === order[0]) {
-        connectBlipListener(stream);
-    }
-
+    console.log("RECEIVING CASCADED STREAM");
+    const { myId, order, streams } = getState();
     const nextPeer = getNextPeer();
-    if (nextPeer) {
-        addStream(nextPeer, stream);
+
+    // The first cascaded stream is a metronome track for syncing later
+    // TODO: this condition is wrong.
+    if (Object.keys(streams).length === 1) {
+        connectBlipListener(stream, dispatch);
+        // After receiving the metronome,
+        // cascade the metronome track and the stream
+        // from the previous peer to the next peer.
+        // const myIndex = order.indexOf(myId);
+        // const prevId = order[myIndex - 1];
+        // const prevStream = streams[prevId];
+        // if (prevStream && nextPeer) {
+        //     addStream(nextPeer, stream);
+        //     addStream(nextPeer, prevStream.clone());
+        // }
+    } else {
+        // Find the next upstream id from here that doesn't have a stream set
+        const upstreamIds = getUpstreamIds().slice(0, -1).reverse();
+        const id = upstreamIds.find((upstreamId) => !streams[upstreamId]);
+        dispatch({
+            type : 'STREAMS_ADD',
+            id,
+            stream,
+        });
+
+        if (nextPeer) {
+            addStream(nextPeer, stream);
+        }
     }
 }
 
 export function stopCascade(dispatch) {
-    changeMode(CASCADE_DONE, dispatch);
+    // changeMode(CASCADE_DONE, dispatch);
+    const { order, peers } = getState();
+    const initiatorId = order[0];
+    peers[initiatorId].send(JSON.stringify({
+        type : 'MODE_SET',
+        mode : CASCADE_DONE
+    }));
 }
 
 function resetStreams() {

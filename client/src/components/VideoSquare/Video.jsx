@@ -31,7 +31,7 @@ const Video = ({ id, isMe, setVideoAspectRatio, stream }) => {
     }, [audioOutput, stream]);
 
     return stream ?
-        <video autoPlay muted={isMe} ref={videoRef} /> :
+        <video autoPlay ref={videoRef} /> :
         null;
 };
 

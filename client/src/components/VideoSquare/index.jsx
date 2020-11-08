@@ -110,8 +110,8 @@ const VideoSquare = ({
             { isMe && <AudioVideoSetup style={settingsButtonStyle} /> }
             { showOrderNumber &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
-            { mode === CASCADE_STANDBY && isMe && iAmInitiator &&
-                <Countdown /> }
+            { /*mode === CASCADE_STANDBY && isMe && iAmInitiator &&
+                <Countdown />*/ }
         </div>
     );
 };

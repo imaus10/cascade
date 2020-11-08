@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from '../Store';
 import { addStream, popStream } from '../../state/actions/peers';
-import { makeBlipStream, makeRecorder } from '../../state/actions/recording';
+import { makeRecorder } from '../../state/actions/recording';
 
 const AudioVideoSetup = ({ style }) => {
     const [state, dispatch] = useContext(Context);
@@ -50,17 +50,16 @@ const AudioVideoSetup = ({ style }) => {
             // Record the unprocessed input
             makeRecorder(stream, dispatch);
 
-            const sendStream = makeBlipStream(stream);
             if (myStream) {
                 Object.values(peers).forEach((peer) => {
                     popStream(peer);
-                    addStream(peer, sendStream);
+                    addStream(peer, stream);
                 });
             }
 
             dispatch({
                 type   : 'MY_STREAM_SET',
-                stream : sendStream
+                stream
             });
         };
         setStream();
