@@ -63,18 +63,18 @@ function makeNewPeer(initiator, peerId, dispatch) {
         const { mode } = getState();
         if (mode === CASCADE_STANDBY) {
             addCascadedStream(theirStream, dispatch);
-            return;
-        }
-        dispatch({
-            type   : 'STREAMS_ADD',
-            id     : peerId,
-            stream : theirStream
-        });
-        // After cascading, if this is sent from downstream,
-        // we need to reciprocate and reopen our stream as well
-        // (except for the next peer, which we're already streaming to)
-        if (mode === CASCADE_DONE && peer._sendStreams.length === 0) {
-            addStream(peer, myStream.clone());
+        } else {
+            dispatch({
+                type   : 'STREAMS_ADD',
+                id     : peerId,
+                stream : theirStream
+            });
+            // After cascading, if this is sent from downstream,
+            // we need to reciprocate and reopen our stream as well
+            // (except for the next peer, which we're already streaming to)
+            if (mode === CASCADE_DONE && peer._sendStreams.length === 0) {
+                addStream(peer, myStream.clone());
+            }
         }
     });
 
@@ -84,9 +84,9 @@ function makeNewPeer(initiator, peerId, dispatch) {
         const { mode, type } = JSON.parse(data.toString());
         if (type === 'MODE_SET') {
             changeMode(mode, dispatch);
-            return;
+        } else {
+            console.error(`Unknown action "${type}" sent thru peer`);
         }
-        console.error(`Unknown action "${type}" sent thru peer`);
     });
 
     dispatch({
