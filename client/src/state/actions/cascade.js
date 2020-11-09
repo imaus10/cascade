@@ -111,25 +111,26 @@ function setupCascade() {
     });
 }
 
+let hasBlips = false;
 export function addCascadedStream(stream, dispatch) {
     console.log("RECEIVING CASCADED STREAM");
     const { myId, order, streams } = getState();
     const nextPeer = getNextPeer();
 
-    // The first cascaded stream is a metronome track for syncing later
-    // TODO: this condition is wrong.
-    if (Object.keys(streams).length === 1) {
+    // The first cascaded stream is a blip track for syncing later
+    if (!hasBlips) {
+        hasBlips = true;
         connectBlipListener(stream, dispatch);
-        // After receiving the metronome,
-        // cascade the metronome track and the stream
-        // from the previous peer to the next peer.
-        // const myIndex = order.indexOf(myId);
-        // const prevId = order[myIndex - 1];
-        // const prevStream = streams[prevId];
-        // if (prevStream && nextPeer) {
-        //     addStream(nextPeer, stream);
-        //     addStream(nextPeer, prevStream.clone());
-        // }
+        // After receiving the blip stream,
+        // cascade it and the stream from the previous peer
+        // to the next peer.
+        const myIndex = order.indexOf(myId);
+        const prevId = order[myIndex - 1];
+        const prevStream = streams[prevId];
+        if (prevStream && nextPeer) {
+            addStream(nextPeer, stream);
+            addStream(nextPeer, prevStream.clone());
+        }
     } else {
         // Find the next upstream id from here that doesn't have a stream set
         const upstreamIds = getUpstreamIds().slice(0, -1).reverse();
@@ -158,6 +159,8 @@ export function stopCascade(dispatch) {
 
 function resetStreams() {
     const { myStream, peers } = getState();
+
+    hasBlips = false;
 
     const nextPeer = getNextPeer();
     if (nextPeer) {
