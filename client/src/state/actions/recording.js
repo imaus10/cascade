@@ -1,4 +1,5 @@
 import { CASCADE_DONE, getNextPeer } from './cascade';
+import { addStream } from './peers';
 import { serverSend } from './server';
 import { getState } from '../reducer';
 
@@ -57,43 +58,43 @@ function audioCtx() {
     return _audioCtx;
 }
 
-// TODO: make these controllable?
 const blipFreq = 440;
-// Interesting phenomenon:
-// at higher than 40 BPM, when analyzing the streamed blips, there is no silence.
-const bpm = 100;
-const gainValue = 0.1;
-const blipLength = 0.25; // seconds
 export function sendBlips(dispatch) {
     console.log("SENDING BLIPS");
     const blipDest = audioCtx().createMediaStreamDestination();
     const blipStream = blipDest.stream;
     const nextPeer = getNextPeer();
-    // use addStream() so we can use popStream()?
-    nextPeer.addStream(blipStream);
+    addStream(nextPeer, blipStream);
 
+    const gainValue = 0.1;
+    const blipLength = 0.25; // seconds
+    const osc = audioCtx().createOscillator();
+    osc.frequency.value = blipFreq;
+    // Connect oscillator to gain node
+    const blipper = audioCtx().createGain();
+    blipper.gain.value = 0;
+    osc.connect(blipper);
+    // Send blips to the analyzer for blip tracking
+    listenToBlips(blipper, dispatch);
+    // And send blips down the cascade
+    blipper.connect(blipDest);
+    osc.start();
+
+    // Turn the gain on and off to make a blip
     const makeBlip = () => {
         const { mode } = getState();
         if (mode === CASCADE_DONE) {
+            osc.stop();
             window.clearInterval(blipIntervalId);
-            // TODO: more cleanup
+            return;
         }
-        // TODO: use gain instead of making new nodes every time
-        const osc = audioCtx().createOscillator();
-        osc.frequency.value = blipFreq;
-        const blipper = audioCtx().createGain();
-        blipper.gain.value = gainValue;
-        osc.connect(blipper);
-        // Send to the speakers
-        blipper.connect(audioCtx().destination);
-        // Send to the analyzer to signal start recording
-        listenToBlips(osc, dispatch);
-        // And send to the cascade
-        blipper.connect(blipDest);
-        osc.start();
-        osc.stop(audioCtx().currentTime + blipLength)
+        blipper.gain.setValueAtTime(gainValue, audioCtx().currentTime);
+        blipper.gain.setValueAtTime(0, audioCtx().currentTime + blipLength);
     };
 
+    // Interesting phenomenon:
+    // at higher than 40 BPM, when analyzing the streamed blips, there is no silence.
+    const bpm = 100;
     const bps = bpm / 60; // beats per second
     const beatInterval = 1000 / bps; // ms between beats
     const blipIntervalId = window.setInterval(makeBlip, beatInterval);
@@ -102,8 +103,6 @@ export function sendBlips(dispatch) {
 export function connectBlipListener(blipStream, dispatch) {
     const blipSource = audioCtx().createMediaStreamSource(blipStream);
     listenToBlips(blipSource, dispatch);
-    // Send to the speakers
-    blipSource.connect(audioCtx().destination);
 }
 
 export async function listenToBlips(blipSourceNode, dispatch) {
@@ -111,6 +110,8 @@ export async function listenToBlips(blipSourceNode, dispatch) {
     const analyzer = audioCtx().createAnalyser();
     analyzer.fftSize = 1024;
     blipSourceNode.connect(analyzer);
+    // Send blips to the speakers
+    analyzer.connect(audioCtx().destination);
 
     const freqResolution = audioCtx().sampleRate / analyzer.fftSize;
     const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
