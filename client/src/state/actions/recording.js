@@ -67,7 +67,7 @@ export function sendBlips(dispatch) {
     addStream(nextPeer, blipStream);
 
     const gainValue = 0.1;
-    const blipLength = 0.25; // seconds
+    const blipLength = 0.1; // seconds
     const osc = audioCtx().createOscillator();
     osc.frequency.value = blipFreq;
     // Connect oscillator to gain node
@@ -92,8 +92,6 @@ export function sendBlips(dispatch) {
         blipper.gain.setValueAtTime(0, audioCtx().currentTime + blipLength);
     };
 
-    // Interesting phenomenon:
-    // at higher than 40 BPM, when analyzing the streamed blips, there is no silence.
     const bpm = 100;
     const bps = bpm / 60; // beats per second
     const beatInterval = 1000 / bps; // ms between beats
@@ -108,7 +106,7 @@ export function connectBlipListener(blipStream, dispatch) {
 export async function listenToBlips(blipSourceNode, dispatch) {
     console.log("LISTENING TO BLIPS");
     const analyzer = audioCtx().createAnalyser();
-    analyzer.fftSize = 1024;
+    analyzer.fftSize = 256;
     blipSourceNode.connect(analyzer);
     // Send blips to the speakers
     analyzer.connect(audioCtx().destination);
