@@ -17,12 +17,13 @@ export function makeRecorder(stream, dispatch) {
     // TODO: use specific codecs. check browser compatibility.
     recorder = new MediaRecorder(stream, { mimeType : 'video/webm' });
     recorder.addEventListener('dataavailable', ({ data }) => {
-        const { files, myId, order } = getState();
-        dispatch({
-            type     : 'FILES_ADD',
-            blobURL  : URL.createObjectURL(data),
-            fileName : `cascade${files.length + 1}_video${order.indexOf(myId) + 1}.webm`
-        });
+        const { server } = getState();
+        server.send(data);
+        // dispatch({
+        //     type     : 'FILES_ADD',
+        //     blobURL  : URL.createObjectURL(data),
+        //     fileName : `cascade${files.length + 1}_video${order.indexOf(myId) + 1}.webm`
+        // });
     });
     recorder.addEventListener('start', async () => {
         beforeRecordLatency = Date.now() - cascadeRecordingTime;

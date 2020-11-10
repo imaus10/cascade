@@ -31,6 +31,16 @@ server.on('connection', (newClient) => {
 
     // And then wait for messages
     newClient.on('message', (data) => {
+        if (data instanceof Buffer) {
+            console.log(`received video file from ${id}`);
+            fs.writeFile(`${outputDir}/peer${order.indexOf(id)}.webm`, data, (err) => {
+                if (err) {
+                    console.error(`Error writing video file: ${err}`);
+                }
+            });
+            return;
+        }
+
         const {
             forId,
             fromId,
@@ -50,7 +60,7 @@ server.on('connection', (newClient) => {
         if (type === 'latency_info') {
             const orderNumber = order.indexOf(fromId);
             // TODO: use this for automatic slicing
-            console.log(`Latency info from ${orderNumber}:\n`, rest);
+            console.log(rest);
             return;
         }
 
