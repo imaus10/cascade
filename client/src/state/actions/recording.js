@@ -10,8 +10,8 @@ import { serverSend } from './server';
 import { getState, initialState } from '../reducer';
 
 let recorder;
-let cascadeRecordingTime;
-let beforeRecordLatency;
+let recordStartTime;
+let blipTimes = [];
 
 export function makeRecorder(stream, dispatch) {
     // TODO: use specific codecs. check browser compatibility.
@@ -26,29 +26,28 @@ export function makeRecorder(stream, dispatch) {
         // });
     });
     recorder.addEventListener('start', async () => {
-        beforeRecordLatency = Date.now() - cascadeRecordingTime;
-        sendLatencyInfo();
+        recordStartTime = Date.now();
     });
     return recorder;
 }
 
 export function startRecording() {
-    cascadeRecordingTime = Date.now();
     recorder.start();
 }
 
 export function stopRecording() {
     recorder.stop();
+    sendSyncInfo();
 }
 
-export function sendLatencyInfo() {
+export function sendSyncInfo() {
     const { myId } = getState();
-    let latencyInfo = {
-        type   : 'latency_info',
+    serverSend({
+        type   : 'sync_info',
         fromId : myId,
-        beforeRecordLatency,
-    };
-    serverSend(latencyInfo);
+        blipTimes,
+        recordStartTime
+    });
 }
 
 // All the Web Audio API stuff below is to help match signals later.
@@ -118,7 +117,7 @@ export function sendBlips(dispatch) {
 }
 
 export function sendRecordSignal() {
-    console.log("SENDING RECORD BLIPS");
+    console.log("SENDING RECORD SIGNAL");
     // This signals to the makeBlip() function
     // to start sending high blips every 4th blip
     blipCount = 0;
@@ -134,7 +133,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
     const { myId, order, peers } = getState();
     const iAmLast = order[order.length - 1] === myId;
     const analyzer = audioCtx().createAnalyser();
-    analyzer.fftSize = 256;
+    analyzer.fftSize = 512;
     blipSourceNode.connect(analyzer);
     // Send blips to the speakers
     analyzer.connect(audioCtx().destination);
@@ -146,6 +145,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
     const doubleBlipBin = Math.floor(doubleBlipFreq / freqResolution);
 
     let firstBlip = true;
+    let recordBlipTimes = false;
     let blippin = false;
     const analyzerIntervalId = setInterval(() => {
         const { countdown, mode } = getState();
@@ -157,7 +157,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
 
         analyzer.getByteFrequencyData(freqBins);
         // Get the index of the frequency bin with the highest energy
-        // maxEnergyIndex === -1 means silence
+        // maxEnergyIndex === -1 means silence, no energy
         const maxEnergyIndex = freqBins.reduce(
             (currentMaxIndex, energy, index) => {
                 const currentMaxEnergy = freqBins[currentMaxIndex] || 0;
@@ -169,8 +169,18 @@ export function listenToBlips(blipSourceNode, dispatch) {
             -1
         );
 
+        // We heard silence
+        if (maxEnergyIndex === -1 && blippin) {
+            blippin = false;
+        }
+
+        // We heard a blip!
         if (maxEnergyIndex !== -1 && !blippin) {
             blippin = true;
+
+            if (recordBlipTimes) {
+                blipTimes.push(Date.now());
+            }
 
             // The last peer, on receiving the first blip,
             // signals to the initiator that everything's good to go.
@@ -193,11 +203,16 @@ export function listenToBlips(blipSourceNode, dispatch) {
                 console.log(`HEARD HIGH BLIP NEAR ${doubleBlipFreq}Hz`);
                 if (mode === CASCADE_STANDBY) {
                     if (countdown === initialState.countdown) {
-                        // Start recording on the very first high blip
+                        // On the first high blip of the countdown, start recording
                         startRecording();
+                        recordBlipTimes = true;
                     }
                     if (countdown === 1) {
+                        // On the last high blip of the countdown,
+                        // change the UI to show recording
+                        // (even though recording already started)
                         changeMode(CASCADE_RECORDING, dispatch);
+                        // And reset countdown for next cascade
                         dispatch({
                             type      : 'COUNTDOWN_SET',
                             countdown : initialState.countdown
@@ -212,10 +227,6 @@ export function listenToBlips(blipSourceNode, dispatch) {
             } else {
                 console.log(`HEARD LOW BLIP NEAR ${blipFreq}Hz`);
             }
-        }
-
-        if (maxEnergyIndex === -1 && blippin) {
-            blippin = false;
         }
     }, timeResolution);
 }

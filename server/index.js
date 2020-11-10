@@ -2,7 +2,7 @@ const fs = require('fs');
 const { v4 : uuidv4 } = require('uuid');
 const { broadcast, broadcastExcept, send, sendToOne, server } = require('./send-utils');
 
-const outputDir = 'video';
+const outputDir = 'output';
 if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir);
 }
@@ -31,9 +31,11 @@ server.on('connection', (newClient) => {
 
     // And then wait for messages
     newClient.on('message', (data) => {
+        const cascadeNumber = order.indexOf(id);
+        const outputFileName = `${outputDir}/peer${cascadeNumber}`
         if (data instanceof Buffer) {
             console.log(`received video file from ${id}`);
-            fs.writeFile(`${outputDir}/peer${order.indexOf(id)}.webm`, data, (err) => {
+            fs.writeFile(`${outputFileName}.webm`, data, (err) => {
                 if (err) {
                     console.error(`Error writing video file: ${err}`);
                 }
@@ -57,10 +59,13 @@ server.on('connection', (newClient) => {
             return;
         };
 
-        if (type === 'latency_info') {
-            const orderNumber = order.indexOf(fromId);
-            // TODO: use this for automatic slicing
-            console.log(rest);
+        if (type === 'sync_info') {
+            // TODO: use this for adaptive timestretching
+            fs.writeFile(`${outputFileName}.json`, JSON.stringify(rest), (err) => {
+                if (err) {
+                    console.error(`Error writing sync file: ${err}`);
+                }
+            });
             return;
         }
 
