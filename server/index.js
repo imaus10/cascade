@@ -1,48 +1,20 @@
+const fs = require('fs');
 const { v4 : uuidv4 } = require('uuid');
-const WebSocket = require('ws');
+const { broadcast, broadcastExcept, send, sendToOne, server } = require('./send-utils');
 
-const server = new WebSocket.Server({ port : 8080 });
+const outputDir = 'video';
+if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+}
+
+// Keep track of cascade order.
+// For now, everybody's in one room.
+// TODO: group things into rooms.
 let order = [];
 
-function send(client, data, isJSON = true) {
-    const sendData = isJSON ? JSON.stringify(data) : data;
-    client.send(sendData);
-}
-
-function sendToOne(id, data, isJSON = true) {
-    server.clients.forEach((client) => {
-        if (client.id === id) {
-            send(client, data, isJSON);
-        }
-    });
-}
-
-function broadcast(data, isJSON = true) {
-    server.clients.forEach((client) => {
-        send(client, data, isJSON);
-    });
-}
-
-function broadcastExcept(exceptId, data, isJSON = true) {
-    server.clients.forEach((client) => {
-        if (client.id !== exceptId) {
-            send(client, data, isJSON);
-        }
-    });
-}
-
-function broadcastOrder() {
-    broadcast({
-        type : 'ORDER_SET',
-        order
-    });
-}
-
 server.on('connection', (newClient) => {
-    // For now, everybody's in one room.
-    // TODO: group things into rooms.
-    const id = uuidv4()
-    console.log(`opening ${id}`);
+    const id = uuidv4();
+    console.log(`joined room: ${id}`);
     newClient.id = id;
     order.push(id);
     send(newClient, {
@@ -52,10 +24,12 @@ server.on('connection', (newClient) => {
 
     // Broadcast the new order of participants,
     // including the new client ID.
-    broadcastOrder();
+    broadcast({
+        type : 'ORDER_SET',
+        order
+    });
 
-    // After that, relay the signals back and forth
-    // (and a few other odds & ends)
+    // And then wait for messages
     newClient.on('message', (data) => {
         const {
             forId,
@@ -64,8 +38,10 @@ server.on('connection', (newClient) => {
             type,
             ...rest
         } = JSON.parse(data);
+        console.log(`${type} from ${id}`);
 
         // Keep the connection alive.
+        // TODO: is this just in ngrok?
         if (type === 'ping') {
             send(newClient, { type : 'pong' });
             return;
@@ -94,10 +70,13 @@ server.on('connection', (newClient) => {
     });
 
     newClient.on('close', () => {
-        console.log(`closing ${newClient.id}`);
+        console.log(`left room: ${newClient.id}`);
         const startIndex = order.indexOf(newClient.id);
         order.splice(startIndex, 1);
-        broadcastOrder();
+        broadcast({
+            type : 'ORDER_SET',
+            order
+        });
     });
 
     // TODO: error handling, etc.
