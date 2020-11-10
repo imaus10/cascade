@@ -56,11 +56,8 @@ export function changeMode(newMode, dispatch) {
         case CASCADE_STANDBY:
             setupCascade();
             break;
-        case CASCADE_RECORDING:
-            startRecording();
-            break;
         case CASCADE_DONE:
-            // stopRecording();
+            stopRecording();
             cascadeModeSet(CASCADE_DONE);
             resetStreams();
             break;
@@ -127,7 +124,7 @@ export function addCascadedStream(stream, dispatch) {
         const myIndex = order.indexOf(myId);
         const prevId = order[myIndex - 1];
         const prevStream = streams[prevId];
-        if (prevStream && nextPeer) {
+        if (nextPeer) {
             addStream(nextPeer, stream);
             addStream(nextPeer, prevStream.clone());
         }

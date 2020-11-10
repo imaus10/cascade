@@ -93,9 +93,11 @@ const VideoSquare = ({
     }, [videoAspectRatio]);
     const showOrderNumber = orderNumber > 0 && videoAspectRatio && dndRef.current;
     const orderNumberStyle = {
-        backgroundColor : mode === CASCADE_STANDBY ? 'yellow' : (
-            mode === CASCADE_RECORDING ? 'red' : 'green'
-        ),
+        backgroundColor : (
+            mode === CASCADE_STANDBY && 'yellow'
+        ) || (
+            mode === CASCADE_RECORDING && 'red'
+        ) || 'green',
         left            : `calc(${left}px + 1%)`,
         top             : `calc(${top}px + 1%)`
     };
@@ -110,8 +112,8 @@ const VideoSquare = ({
             { isMe && <AudioVideoSetup style={settingsButtonStyle} /> }
             { showOrderNumber &&
                 <span className="order-number" style={orderNumberStyle}>{orderNumber}</span> }
-            { /*mode === CASCADE_STANDBY && isMe && iAmInitiator &&
-                <Countdown />*/ }
+            { mode === CASCADE_STANDBY && isMe &&
+                <Countdown /> }
         </div>
     );
 };

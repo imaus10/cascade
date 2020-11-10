@@ -3,6 +3,7 @@ import { CASCADE_DONE, CASCADE_STANDBY, READY, SETUP } from './actions/cascade';
 export const initialState = {
     // This needs to be stored here so all video elements output sound to the same place.
     audioOutput   : null,
+    countdown     : 4,
     // Blob URLs of the recorded myStream (not combined with other peers)
     files         : [],
     // The initiator is whoever is in the first spot.
@@ -34,6 +35,11 @@ function reducer(state, action) {
             return {
                 ...state,
                 audioOutput : action.deviceId
+            };
+        case 'COUNTDOWN_SET':
+            return {
+                ...state,
+                countdown : action.countdown
             };
         case 'FILES_ADD':
             return {

@@ -23,8 +23,7 @@ const Navigation = () => {
                 >
                     GO
                 </button> }
-            { /*mode === CASCADE_RECORDING && iAmInitiator &&*/
-                mode === CASCADE_STANDBY && iAmLast &&
+            { mode === CASCADE_RECORDING && iAmLast &&
                 <button
                     className="big-button"
                     onClick={() => stopCascade(dispatch)}

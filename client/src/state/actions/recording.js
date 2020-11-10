@@ -1,7 +1,13 @@
-import { CASCADE_DONE, getNextPeer } from './cascade';
+import {
+    CASCADE_DONE,
+    CASCADE_RECORDING,
+    CASCADE_STANDBY,
+    changeMode,
+    getNextPeer
+} from './cascade';
 import { addStream } from './peers';
 import { serverSend } from './server';
-import { getState } from '../reducer';
+import { getState, initialState } from '../reducer';
 
 let recorder;
 let cascadeRecordingTime;
@@ -59,6 +65,8 @@ function audioCtx() {
 }
 
 const blipFreq = 440;
+const doubleBlipFreq = blipFreq * 4;
+let blipCount = -1;
 export function sendBlips(dispatch) {
     console.log("SENDING BLIPS");
     const blipDest = audioCtx().createMediaStreamDestination();
@@ -86,7 +94,17 @@ export function sendBlips(dispatch) {
         if (mode === CASCADE_DONE) {
             osc.stop();
             window.clearInterval(blipIntervalId);
+            blipCount = -1;
             return;
+        }
+        if (blipCount !== -1) {
+            // Send out a blip an octave higher every 4 blips
+            // to signal record start
+            if (blipCount % 4 === 0) {
+                osc.frequency.setValueAtTime(doubleBlipFreq, audioCtx().currentTime);
+                osc.frequency.setValueAtTime(blipFreq, audioCtx().currentTime + blipLength);
+            }
+            blipCount += 1;
         }
         blipper.gain.setValueAtTime(gainValue, audioCtx().currentTime);
         blipper.gain.setValueAtTime(0, audioCtx().currentTime + blipLength);
@@ -98,13 +116,22 @@ export function sendBlips(dispatch) {
     const blipIntervalId = window.setInterval(makeBlip, beatInterval);
 }
 
+export function sendRecordSignal() {
+    console.log("SENDING RECORD BLIPS");
+    // This signals to the makeBlip() function
+    // to start sending high blips every 4th blip
+    blipCount = 0;
+}
+
 export function connectBlipListener(blipStream, dispatch) {
     const blipSource = audioCtx().createMediaStreamSource(blipStream);
     listenToBlips(blipSource, dispatch);
 }
 
-export async function listenToBlips(blipSourceNode, dispatch) {
+export function listenToBlips(blipSourceNode, dispatch) {
     console.log("LISTENING TO BLIPS");
+    const { myId, order, peers } = getState();
+    const iAmLast = order[order.length - 1] === myId;
     const analyzer = audioCtx().createAnalyser();
     analyzer.fftSize = 256;
     blipSourceNode.connect(analyzer);
@@ -114,10 +141,19 @@ export async function listenToBlips(blipSourceNode, dispatch) {
     const freqResolution = audioCtx().sampleRate / analyzer.fftSize;
     const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
     const freqBins = new Uint8Array(analyzer.frequencyBinCount);
-    const expectedFreqIndex = Math.floor(blipFreq / freqResolution);
+    const blipBin = Math.floor(blipFreq / freqResolution);
+    const doubleBlipBin = Math.floor(doubleBlipFreq / freqResolution);
 
+    let firstBlip = true;
     let blippin = false;
     const analyzerIntervalId = setInterval(() => {
+        const { countdown, mode } = getState();
+        if (mode === CASCADE_DONE) {
+            clearInterval(analyzerIntervalId);
+            blipSourceNode.disconnect(analyzer);
+            return;
+        }
+
         analyzer.getByteFrequencyData(freqBins);
         // Get the index of the frequency bin with the highest energy
         // maxEnergyIndex === -1 means silence
@@ -132,34 +168,51 @@ export async function listenToBlips(blipSourceNode, dispatch) {
             -1
         );
 
-        // Helpful for debugging:
-        // if (maxFreqIndex !== -1) {
-        //     const freqStrings = freqArray.reduce((accumulator, freqBinEnergy, index) => {
-        //         if (freqBinEnergy > 0) {
-        //             const binLow = Math.floor(index * freqResolution);
-        //             const binHigh = Math.floor((index + 1) * freqResolution);
-        //             return [
-        //                 ...accumulator,
-        //                 `${binLow}-${binHigh}: ${freqBinEnergy}`
-        //             ];
-        //         }
-        //         return accumulator;
-        //     }, []);
-        //     console.log(freqStrings.join('\t'));
-        // }
-
         if (maxEnergyIndex !== -1 && !blippin) {
             blippin = true;
-            const binLow = Math.floor(maxEnergyIndex * freqResolution);
-            const binHigh = Math.floor((maxEnergyIndex + 1) * freqResolution);
-            console.log(`HEARD BLIP @ ${binLow}-${binHigh}Hz (bin ${maxEnergyIndex}, waiting for ${expectedFreqIndex})`);
-            // const { mode } = getState();
-            // if (mode === CASCADE_STANDBY) {
-            //     changeMode(CASCADE_RECORDING, dispatch);
-            // }
-            // clearInterval(intervalId);
-            // blipSourceNode.disconnect(analyzer);
+
+            // The last peer, on receiving the first blip,
+            // signals to the initiator that everything's good to go.
+            if (firstBlip && iAmLast) {
+                firstBlip = false;
+                const initiatorId = order[0];
+                const initiator = peers[initiatorId];
+                initiator.send(JSON.stringify({
+                    type : 'SEND_RECORD_SIGNAL'
+                }));
+            }
+
+            // const binLow = Math.floor(maxEnergyIndex * freqResolution);
+            // const binHigh = Math.floor((maxEnergyIndex + 1) * freqResolution);
+            // console.log(`HEARD BLIP @ ${binLow}-${binHigh}Hz (bin ${maxEnergyIndex}, waiting for ${expectedFreqIndex})`);
+
+            const blipBinDistance = Math.abs(blipBin - maxEnergyIndex);
+            const doubleBlipBinDistance = Math.abs(doubleBlipBin - maxEnergyIndex)
+            if (doubleBlipBinDistance < blipBinDistance) {
+                console.log(`HEARD HIGH BLIP NEAR ${doubleBlipFreq}Hz`);
+                if (mode === CASCADE_STANDBY) {
+                    if (countdown === initialState.countdown) {
+                        // Start recording on the very first high blip
+                        startRecording();
+                    }
+                    if (countdown === 1) {
+                        changeMode(CASCADE_RECORDING, dispatch);
+                        dispatch({
+                            type      : 'COUNTDOWN_SET',
+                            countdown : initialState.countdown
+                        });
+                    } else {
+                        dispatch({
+                            type      : 'COUNTDOWN_SET',
+                            countdown : countdown - 1
+                        });
+                    }
+                }
+            } else {
+                console.log(`HEARD LOW BLIP NEAR ${blipFreq}Hz`);
+            }
         }
+
         if (maxEnergyIndex === -1 && blippin) {
             blippin = false;
         }

@@ -6,6 +6,7 @@ import {
     changeMode,
     cleanStream
 } from './cascade';
+import { sendRecordSignal } from './recording';
 import { serverSend } from './server';
 import { getState } from '../reducer';
 
@@ -84,6 +85,8 @@ function makeNewPeer(initiator, peerId, dispatch) {
         const { mode, type } = JSON.parse(data.toString());
         if (type === 'MODE_SET') {
             changeMode(mode, dispatch);
+        } else if (type === 'SEND_RECORD_SIGNAL') {
+            sendRecordSignal();
         } else {
             console.error(`Unknown action "${type}" sent thru peer`);
         }
