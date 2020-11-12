@@ -11,6 +11,9 @@ import { getState, initialState } from '../reducer';
 
 let recorder;
 let recordStartTime;
+let blipRecorder;
+let blipRecordStartTime;
+let firstBlipTime;
 let blipTimes = [];
 
 export function makeRecorder(stream, dispatch) {
@@ -18,7 +21,9 @@ export function makeRecorder(stream, dispatch) {
     recorder = new MediaRecorder(stream, { mimeType : 'video/webm' });
     recorder.addEventListener('dataavailable', ({ data }) => {
         const { server } = getState();
+        console.log('SENDING VIDEO FILE TO SERVER');
         server.send(data);
+        blipRecorder.stop();
         // dispatch({
         //     type     : 'FILES_ADD',
         //     blobURL  : URL.createObjectURL(data),
@@ -26,18 +31,30 @@ export function makeRecorder(stream, dispatch) {
         // });
     });
     recorder.addEventListener('start', async () => {
-        recordStartTime = Date.now();
+        recordStartTime = Date.now() - firstBlipTime;
     });
-    return recorder;
+}
+
+function makeBlipRecorder(stream) {
+    blipRecorder = new MediaRecorder(stream, { mimeType : 'audio/ogg;codecs=opus' });
+    blipRecorder.addEventListener('dataavailable', ({ data }) => {
+        const { server } = getState();
+        console.log('SENDING METRONOME AUDIO TO SERVER');
+        server.send(data);
+        sendSyncInfo();
+    });
+    blipRecorder.addEventListener('start', async () => {
+        blipRecordStartTime = Date.now() - firstBlipTime;
+    });
 }
 
 export function startRecording() {
     recorder.start();
+    blipRecorder.start();
 }
 
 export function stopRecording() {
     recorder.stop();
-    sendSyncInfo();
 }
 
 export function sendSyncInfo() {
@@ -46,13 +63,15 @@ export function sendSyncInfo() {
         type   : 'sync_info',
         fromId : myId,
         blipTimes,
+        blipRecordStartTime,
         recordStartTime
     });
 }
 
 // All the Web Audio API stuff below is to help match signals later.
 // When the initiator starts the cascade, it sends a series of blips.
-// The start of the 4th blip (at END_FREQ Hz) signals recording start.
+// Each peer in the cascade analyzes the incoming audio
+// and records when it detects a blip.
 
 let _audioCtx;
 function audioCtx() {
@@ -88,7 +107,7 @@ export function sendBlips(dispatch) {
     blipper.connect(blipDest);
     osc.start();
 
-    // Turn the gain on and off to make a blip
+    // How to make a blip: turn the oscillator gain on and off
     const makeBlip = () => {
         const { mode } = getState();
         if (mode === CASCADE_DONE) {
@@ -130,6 +149,12 @@ export function connectBlipListener(blipStream, dispatch) {
 
 export function listenToBlips(blipSourceNode, dispatch) {
     console.log("LISTENING TO BLIPS");
+
+    // Record blips, for experiments
+    const blipStream = audioCtx().createMediaStreamDestination();
+    blipSourceNode.connect(blipStream);
+    makeBlipRecorder(blipStream.stream);
+
     const { myId, order, peers } = getState();
     const iAmLast = order[order.length - 1] === myId;
     const analyzer = audioCtx().createAnalyser();
@@ -179,7 +204,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
             blippin = true;
 
             if (recordBlipTimes) {
-                blipTimes.push(Date.now());
+                blipTimes.push(Date.now() - firstBlipTime);
             }
 
             // The last peer, on receiving the first blip,
@@ -206,6 +231,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
                         // On the first high blip of the countdown, start recording
                         startRecording();
                         recordBlipTimes = true;
+                        firstBlipTime = Date.now();
                     }
                     if (countdown === 1) {
                         // On the last high blip of the countdown,

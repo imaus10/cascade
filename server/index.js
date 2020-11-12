@@ -34,12 +34,20 @@ server.on('connection', (newClient) => {
         const cascadeNumber = order.indexOf(id);
         const outputFileName = `${outputDir}/peer${cascadeNumber}`
         if (data instanceof Buffer) {
-            console.log(`received video file from ${id}`);
-            fs.writeFile(`${outputFileName}.webm`, data, (err) => {
-                if (err) {
-                    console.error(`Error writing video file: ${err}`);
-                }
-            });
+            const videoFileName = `${outputFileName}.webm`;
+            if (!fs.existsSync(videoFileName)) {
+                console.log(`received video file from ${id}`);
+                fs.writeFile(videoFileName, data, (err) => {
+                    if (err) {
+                        console.error(`Error writing video file: ${err}`);
+                    }
+                });
+            } else {
+                console.log(`received audio file from ${id}`);
+                fs.writeFile(`${outputFileName}.opus`, data, (err) => {
+                    console.error(`Error writing audio file: ${err}`);
+                });
+            }
             return;
         }
 
