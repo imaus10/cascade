@@ -36,7 +36,7 @@ export function makeRecorder(stream, dispatch) {
 }
 
 function makeBlipRecorder(stream) {
-    blipRecorder = new MediaRecorder(stream, { mimeType : 'audio/ogg;codecs=opus' });
+    blipRecorder = new MediaRecorder(stream, { mimeType : 'audio/webm' });
     blipRecorder.addEventListener('dataavailable', ({ data }) => {
         const { server } = getState();
         console.log('SENDING METRONOME AUDIO TO SERVER');

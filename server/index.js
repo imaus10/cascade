@@ -34,6 +34,8 @@ server.on('connection', (newClient) => {
         const cascadeNumber = order.indexOf(id);
         const outputFileName = `${outputDir}/peer${cascadeNumber}`
         if (data instanceof Buffer) {
+            // We're expecting two files:
+            // first is the video, second is the metronome audio.
             const videoFileName = `${outputFileName}.webm`;
             if (!fs.existsSync(videoFileName)) {
                 console.log(`received video file from ${id}`);
@@ -44,7 +46,7 @@ server.on('connection', (newClient) => {
                 });
             } else {
                 console.log(`received audio file from ${id}`);
-                fs.writeFile(`${outputFileName}.opus`, data, (err) => {
+                fs.writeFile(`${outputFileName}_metronome.webm`, data, (err) => {
                     console.error(`Error writing audio file: ${err}`);
                 });
             }
