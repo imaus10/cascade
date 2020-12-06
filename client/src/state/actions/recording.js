@@ -66,6 +66,7 @@ export function sendSyncInfo() {
         blipRecordStartTime,
         recordStartTime
     });
+    blipTimes = [];
 }
 
 // All the Web Audio API stuff below is to help match signals later.
