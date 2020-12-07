@@ -2,7 +2,6 @@ import { addStream, popStream } from './peers';
 import {
     connectBlipListener,
     sendBlips,
-    startRecording,
     stopRecording
 } from './recording';
 import { serverSend } from './server';
@@ -57,9 +56,9 @@ export function changeMode(newMode, dispatch) {
             setupCascade();
             break;
         case CASCADE_DONE:
-            stopRecording();
             cascadeModeSet(CASCADE_DONE);
             resetStreams();
+            stopRecording();
             break;
         default:
     }
