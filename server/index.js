@@ -69,16 +69,6 @@ server.on('connection', (newClient) => {
             return;
         };
 
-        if (type === 'sync_info') {
-            // TODO: use this for adaptive timestretching
-            fs.writeFile(`${outputFileName}.json`, JSON.stringify(rest), (err) => {
-                if (err) {
-                    console.error(`Error writing sync file: ${err}`);
-                }
-            });
-            return;
-        }
-
         // Save new ordering in case new participants join
         // after some reordering has occurred.
         // (Or a connection gets dropped and then they come back...)

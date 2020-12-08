@@ -6,15 +6,10 @@ import {
     getNextPeer
 } from './cascade';
 import { addStream } from './peers';
-import { serverSend } from './server';
 import { getState, initialState } from '../reducer';
 
 let recorder;
-let recordStartTime;
 let blipRecorder;
-let blipRecordStartTime;
-let firstBlipTime;
-let blipTimes = [];
 
 export function makeRecorder(stream, dispatch) {
     // TODO: use specific codecs. check browser compatibility.
@@ -30,9 +25,6 @@ export function makeRecorder(stream, dispatch) {
         //     fileName : `cascade${files.length + 1}_video${order.indexOf(myId) + 1}.webm`
         // });
     });
-    recorder.addEventListener('start', async () => {
-        recordStartTime = Date.now() - firstBlipTime;
-    });
 }
 
 function makeBlipRecorder(stream) {
@@ -41,10 +33,6 @@ function makeBlipRecorder(stream) {
         const { server } = getState();
         console.log('SENDING METRONOME AUDIO TO SERVER');
         server.send(data);
-        sendSyncInfo();
-    });
-    blipRecorder.addEventListener('start', async () => {
-        blipRecordStartTime = Date.now() - firstBlipTime;
     });
 }
 
@@ -55,18 +43,6 @@ export function startRecording() {
 
 export function stopRecording() {
     recorder.stop();
-}
-
-export function sendSyncInfo() {
-    const { myId } = getState();
-    serverSend({
-        type   : 'sync_info',
-        fromId : myId,
-        blipTimes,
-        blipRecordStartTime,
-        recordStartTime
-    });
-    blipTimes = [];
 }
 
 // All the Web Audio API stuff below is to help match signals later.
@@ -171,17 +147,11 @@ export function listenToBlips(blipSourceNode, dispatch) {
     const doubleBlipBin = Math.floor(doubleBlipFreq / freqResolution);
 
     let firstBlip = true;
-    let recordBlipTimes = false;
     let blippin = false;
     const analyzerIntervalId = setInterval(() => {
         const { countdown, mode } = getState();
-        if (mode === CASCADE_DONE) {
-            clearInterval(analyzerIntervalId);
-            blipSourceNode.disconnect(analyzer);
-            return;
-        }
-
         analyzer.getByteFrequencyData(freqBins);
+
         // Get the index of the frequency bin with the highest energy
         // maxEnergyIndex === -1 means silence, no energy
         const maxEnergyIndex = freqBins.reduce(
@@ -203,10 +173,6 @@ export function listenToBlips(blipSourceNode, dispatch) {
         // We heard a blip!
         if (maxEnergyIndex !== -1 && !blippin) {
             blippin = true;
-
-            if (recordBlipTimes) {
-                blipTimes.push(Date.now() - firstBlipTime);
-            }
 
             // The last peer, on receiving the first blip,
             // signals to the initiator that everything's good to go.
@@ -231,8 +197,6 @@ export function listenToBlips(blipSourceNode, dispatch) {
                     if (countdown === initialState.countdown) {
                         // On the first high blip of the countdown, start recording
                         startRecording();
-                        recordBlipTimes = true;
-                        firstBlipTime = Date.now();
                     }
                     if (countdown === 1) {
                         // On the last high blip of the countdown,
@@ -244,6 +208,9 @@ export function listenToBlips(blipSourceNode, dispatch) {
                             type      : 'COUNTDOWN_SET',
                             countdown : initialState.countdown
                         });
+                        // And stop listening for blips
+                        clearInterval(analyzerIntervalId);
+                        blipSourceNode.disconnect(analyzer);
                     } else {
                         dispatch({
                             type      : 'COUNTDOWN_SET',
