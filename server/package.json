@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
+    "start": "source venv/bin/activate && node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Austin Blanton",
