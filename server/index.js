@@ -1,3 +1,4 @@
+const { spawn } = require('child_process');
 const fs = require('fs');
 const { v4 : uuidv4 } = require('uuid');
 const { broadcast, broadcastExcept, send, sendToOne, server } = require('./send-utils');
@@ -13,13 +14,13 @@ if (!fs.existsSync(outputDir)) {
 let order = [];
 
 server.on('connection', (newClient) => {
-    const id = uuidv4();
-    console.log(`joined room: ${id}`);
-    newClient.id = id;
-    order.push(id);
+    const myId = uuidv4();
+    console.log(`joined room: ${myId}`);
+    newClient.id = myId;
+    order.push(myId);
     send(newClient, {
         type : 'MY_ID_SET',
-        id   : newClient.id,
+        id   : myId,
     });
 
     // Broadcast the new order of participants,
@@ -31,23 +32,44 @@ server.on('connection', (newClient) => {
 
     // And then wait for messages
     newClient.on('message', (data) => {
-        const cascadeNumber = order.indexOf(id);
-        const outputFileName = `${outputDir}/peer${cascadeNumber}`
+
+        // Handle binary files first
         if (data instanceof Buffer) {
+            const position = order.indexOf(myId);
+            const outputPrefix = `${outputDir}/peer${position}`;
             // We're expecting two files:
             // first is the video, second is the metronome audio.
-            const videoFileName = `${outputFileName}.webm`;
+            const videoFileName = `${outputPrefix}_video.webm`;
             if (!fs.existsSync(videoFileName)) {
-                console.log(`received video file from ${id}`);
+                console.log(`received video file from ${myId}`);
                 fs.writeFile(videoFileName, data, (err) => {
                     if (err) {
                         console.error(`Error writing video file: ${err}`);
                     }
                 });
             } else {
-                console.log(`received audio file from ${id}`);
-                fs.writeFile(`${outputFileName}_metronome.webm`, data, (err) => {
-                    console.error(`Error writing audio file: ${err}`);
+                console.log(`received audio file from ${myId}`);
+                fs.writeFile(`${outputPrefix}_metronome.webm`, data, (err) => {
+                    if (err) {
+                        console.error(`Error writing audio file: ${err}`);
+                        return;
+                    }
+                    const readyToCombine = order.every(
+                        (id, index) => fs.existsSync(`${outputDir}/peer${index}_video.webm`)
+                    );
+                    if (readyToCombine) {
+                        console.log('Timeshifting audio to match metronome');
+                        const timeshift = spawn('python', ['-u', 'align_audio_to_metronome.py', order.length])
+                        timeshift.stdout.on('data', (data) => {
+                            console.log(`Timeshift stdout:\n${data}`);
+                        });
+                        timeshift.stderr.on('data', (data) => {
+                            console.log(`Timeshift stderr:\n${data}`);
+                        });
+                        timeshift.on('close', () => {
+                            console.log('Timeshifting done.');
+                        });
+                    }
                 });
             }
             return;
@@ -60,7 +82,7 @@ server.on('connection', (newClient) => {
             type,
             ...rest
         } = JSON.parse(data);
-        console.log(`${type} from ${id}`);
+        console.log(`${type} from ${myId}`);
 
         // Keep the connection alive.
         // TODO: is this just in ngrok?
@@ -85,8 +107,8 @@ server.on('connection', (newClient) => {
     });
 
     newClient.on('close', () => {
-        console.log(`left room: ${newClient.id}`);
-        const startIndex = order.indexOf(newClient.id);
+        console.log(`left room: ${myId}`);
+        const startIndex = order.indexOf(myId);
         order.splice(startIndex, 1);
         broadcast({
             type : 'ORDER_SET',
