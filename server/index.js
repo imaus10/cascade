@@ -12,6 +12,7 @@ if (!fs.existsSync(outputDir)) {
 // For now, everybody's in one room.
 // TODO: group things into rooms.
 let order = [];
+let cascadeNumber = 0;
 
 server.on('connection', (newClient) => {
     const myId = uuidv4();
@@ -33,10 +34,14 @@ server.on('connection', (newClient) => {
     // And then wait for messages
     newClient.on('message', (data) => {
 
-        // Handle binary files first
+        // Handle binary file messages first
         if (data instanceof Buffer) {
+            const cascadeDir = `${outputDir}/cascade${cascadeNumber}`;
+            if (!fs.existsSync(cascadeDir)) {
+                fs.mkdirSync(cascadeDir);
+            }
             const position = order.indexOf(myId);
-            const outputPrefix = `${outputDir}/peer${position}`;
+            const outputPrefix = `${cascadeDir}/peer${position}`;
             // We're expecting two files:
             // first is the video, second is the metronome audio.
             const videoFileName = `${outputPrefix}_video.webm`;
@@ -55,11 +60,13 @@ server.on('connection', (newClient) => {
                         return;
                     }
                     const readyToCombine = order.every(
-                        (id, index) => fs.existsSync(`${outputDir}/peer${index}_video.webm`)
+                        (id, index) => fs.existsSync(`${cascadeDir}/peer${index}_metronome.webm`)
                     );
                     if (readyToCombine) {
                         console.log('Timeshifting audio to match metronome');
-                        const timeshift = spawn('python', ['-u', 'align_audio_to_metronome.py', order.length])
+                        const timeshift = spawn(
+                            'python', ['-u', 'align_audio_to_metronome.py', cascadeDir]
+                        )
                         timeshift.stdout.on('data', (data) => {
                             console.log(`Timeshift stdout:\n${data}`);
                         });
@@ -69,12 +76,14 @@ server.on('connection', (newClient) => {
                         timeshift.on('close', () => {
                             console.log('Timeshifting done.');
                         });
+                        cascadeNumber += 1;
                     }
                 });
             }
             return;
         }
 
+        // If the message not a binary file, it's JSON
         const {
             forId,
             fromId,

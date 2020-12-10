@@ -1,3 +1,4 @@
+from glob import glob
 from math import ceil, sqrt
 import subprocess
 import sys
@@ -5,9 +6,20 @@ import sys
 import librosa
 import numpy as np
 
+
+def get_num_peers(cascade_dir):
+    '''
+    Get the number of peers by looking at
+    the files in the cascade's output dir.
+    '''
+    num_peers = len(glob(f'{cascade_dir}/peer*_metronome.webm'))
+    if len(glob(f'{cascade_dir}/peer*_video.webm')) != num_peers:
+        raise Exception(f'Missing files.')
+    return num_peers
+
 def detect_blip_onsets(metro_filename):
     '''
-    This function loads the metronome audio and detects the beat onsets.
+    Load the metronome audio and detect the beat onsets.
     '''
     print(f'loading {metro_filename}')
     metronome, sample_rate = librosa.load(metro_filename)
@@ -23,15 +35,17 @@ def detect_blip_onsets(metro_filename):
     # and then remove all remaining off markers
     return onset_times[::2]
 
-def align_videos_to_metronome(num_peers):
+def align_videos_to_metronome(cascade_dir):
     '''
-    This function generates an ffmpeg command
+    Generate the ffmpeg command
     to timestretch the audio according to the reference metronome
     and stack the videos into a grid.
     '''
+    num_peers = get_num_peers(cascade_dir)
+
     # TODO: multiprocess this part?
     metronomes = [
-        detect_blip_onsets(f'output/peer{peer_number}_metronome.webm')
+        detect_blip_onsets(f'{cascade_dir}/peer{peer_number}_metronome.webm')
         for peer_number
         in range(num_peers)
     ]
@@ -107,7 +121,7 @@ def align_videos_to_metronome(num_peers):
     # the regular audio will stretch
     # according to the metronome audio
     ffmpeg_inputs = ' \\\n  '.join([
-        f'-i output/peer{peer_number}_video.webm'
+        f'-i "{cascade_dir}/peer{peer_number}_video.webm"'
         for peer_number
         in range(num_peers)
     ])
@@ -123,11 +137,11 @@ ffmpeg \\
   -map "[outa]" \\
   -map "[outv]" \\
   -ac 2 \\
-  output/cascade0.webm
+  {cascade_dir}/cascade.webm
 '''
     # print(ffmpeg_command)
     subprocess.run(ffmpeg_command, check=True, shell=True)
 
 if __name__ == '__main__':
-    num_peers = int(sys.argv[1])
-    align_videos_to_metronome(num_peers)
+    cascade_dir = sys.argv[1]
+    align_videos_to_metronome(cascade_dir)
