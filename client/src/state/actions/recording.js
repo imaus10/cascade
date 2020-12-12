@@ -138,7 +138,7 @@ export function listenToBlips(blipSourceNode, dispatch) {
     analyzer.fftSize = 512;
     blipSourceNode.connect(analyzer);
     // Send blips to the speakers
-    analyzer.connect(audioCtx().destination);
+    blipSourceNode.connect(audioCtx().destination);
 
     const freqResolution = audioCtx().sampleRate / analyzer.fftSize;
     const timeResolution = Math.floor(1 / freqResolution * 1000); // ms
