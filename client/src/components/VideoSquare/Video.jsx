@@ -2,7 +2,7 @@ import React, { useCallback, useContext } from 'react';
 import { Context } from '../Store';
 import usePrevious from '../../state/use-previous';
 
-const Video = ({ id, isMe, setVideoAspectRatio, stream }) => {
+const Video = ({ isMe, setVideoAspectRatio, stream }) => {
     const [state] = useContext(Context);
     const { audioOutput } = state;
 
@@ -31,7 +31,7 @@ const Video = ({ id, isMe, setVideoAspectRatio, stream }) => {
     }, [audioOutput, stream]);
 
     return stream ?
-        <video autoPlay ref={videoRef} /> :
+        <video autoPlay muted={isMe} ref={videoRef} /> :
         null;
 };
 
