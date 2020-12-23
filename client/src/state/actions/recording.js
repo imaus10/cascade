@@ -127,7 +127,7 @@ export function connectBlipListener(blipStream, dispatch) {
 export function listenToBlips(blipSourceNode, dispatch) {
     console.log("LISTENING TO BLIPS");
 
-    // Record blips, for experiments
+    // Record blips, for alignment
     const blipStream = audioCtx().createMediaStreamDestination();
     blipSourceNode.connect(blipStream);
     makeBlipRecorder(blipStream.stream);
@@ -211,6 +211,8 @@ export function listenToBlips(blipSourceNode, dispatch) {
                         // And stop listening for blips
                         clearInterval(analyzerIntervalId);
                         blipSourceNode.disconnect(analyzer);
+                        // And stop playing blips
+                        blipSourceNode.disconnect(audioCtx().destination);
                     } else {
                         dispatch({
                             type      : 'COUNTDOWN_SET',
