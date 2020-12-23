@@ -2,3 +2,4 @@ node_modules
 *.webm
 output
 venv
+.ipynb_checkpoints
