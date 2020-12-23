@@ -35,3 +35,7 @@ Then you can connect to the server from the front end with a URL like so:
 ```
 https://localhost:3000/cascade?serverURL=wss://{tunnel_id}.ngrok.io
 ```
+
+## Output Files
+
+Each cascade makes its own directory in the `output` directory. This is where to get the raw videos (`peer{n}_video.webm`) and metronome audio (`peer{n}_metronome.webm`), as well as the combined video with aligned audio (`cascade.webm`). Right now there is no mechanism for downloading from the server.
