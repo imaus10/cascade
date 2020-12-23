@@ -3,7 +3,6 @@ import { Context } from './Store';
 import {
     CASCADE_DONE,
     CASCADE_RECORDING,
-    CASCADE_STANDBY,
     READY,
     startCascade,
     stopCascade
@@ -11,9 +10,7 @@ import {
 
 const Navigation = () => {
     const [state, dispatch] = useContext(Context);
-    const { iAmInitiator, mode, myId, order } = state;
-    const lastId = order[order.length - 1];
-    const iAmLast = myId === lastId;
+    const { iAmInitiator, mode, order } = state;
     return (
         <nav>
             { [READY, CASCADE_DONE].includes(mode) && iAmInitiator && order.length > 1 &&
@@ -23,7 +20,7 @@ const Navigation = () => {
                 >
                     GO
                 </button> }
-            { mode === CASCADE_RECORDING && iAmLast &&
+            { mode === CASCADE_RECORDING && iAmInitiator &&
                 <button
                     className="big-button"
                     onClick={() => stopCascade(dispatch)}

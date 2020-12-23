@@ -144,13 +144,7 @@ export function addCascadedStream(stream, dispatch) {
 }
 
 export function stopCascade(dispatch) {
-    // changeMode(CASCADE_DONE, dispatch);
-    const { order, peers } = getState();
-    const initiatorId = order[0];
-    peers[initiatorId].send(JSON.stringify({
-        type : 'MODE_SET',
-        mode : CASCADE_DONE
-    }));
+    changeMode(CASCADE_DONE, dispatch);
 }
 
 function resetStreams() {
