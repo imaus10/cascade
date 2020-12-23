@@ -17,23 +17,31 @@ def get_num_peers(cascade_dir):
         raise Exception(f'Missing files.')
     return num_peers
 
+
 def detect_blip_onsets(metro_filename):
     '''
     Load the metronome audio and detect the beat onsets.
     '''
     print(f'loading {metro_filename}')
     metronome, sample_rate = librosa.load(metro_filename)
-    onset_frames = librosa.onset.onset_detect(metronome, sr=sample_rate, wait=1, pre_avg=1, pre_max=1, post_max=1)
+    onset_frames = librosa.onset.onset_detect(metronome, sr=sample_rate)
     onset_times = librosa.frames_to_time(onset_frames)
     # onset_times has both on and off times (is an off the onset of silence? 🤔)
     # remove the first marker if it's an off marker
     if (onset_times[1] - onset_times[0]) > 0.2:
         onset_times = onset_times[1:]
-    # and remove the last marker if it's an on marker
-    if (onset_times[-1] - onset_times[-2]) > 0.2:
-        onset_times = onset_times[:-1]
-    # and then remove all remaining off markers
-    return onset_times[::2]
+    # it has been observed in practice that
+    # sometimes the detector will miss the on marker but not the off marker.
+    # in this case we'd rather use the off marker than drop a metronome blip.
+    is_on_marker = np.insert(
+        # if the blip is more than 200ms from the previous marker, call it an onset.
+        np.diff(onset_times) > 0.2,
+        # and always keep the first marker
+        0,
+        [True]
+    )
+    return onset_times[is_on_marker]
+
 
 def align_videos_to_metronome(cascade_dir):
     '''
@@ -51,6 +59,10 @@ def align_videos_to_metronome(cascade_dir):
     ]
     reference_metro = metronomes[0]
 
+    # if there are uneven number of blips,
+    # chop off the extra blips from the end
+    num_slices = min([ len(metro) for metro in metronomes ])
+
     slice_n_stretch_commands = []
     merge_inputs = []
     for metro_index, metronome in enumerate(metronomes):
@@ -61,30 +73,31 @@ def align_videos_to_metronome(cascade_dir):
             merge_inputs.append('[a0]')
             continue
 
-        if len(reference_metro) != len(metronome):
-            raise Exception(f'Metronome {metro_index} has {len(metronome)} blips but the reference metro has {len(reference_metro)}')
+        if len(metronome) != len(reference_metro):
+            print(f'Warning: metronome {metro_index} has {len(metronome)} blips but the reference metronome has {len(reference_metro)} blips. The excess blips will be chopped off from the end. If the blip detection missed a blip altogether the end result will probably be messed up. Sorry.')
 
-        for blip_index, blip_time in enumerate(metronome):
+        for blip_index in range(num_slices):
+            blip_time = metronome[blip_index]
             start_time = 0 if blip_index == 0 else metronome[blip_index - 1]
             # 1. trim out each slice of audio
             slice_command = f'atrim=start={start_time:.3f}:end={blip_time:.3f}'
 
-            # 2. align the audio start to the reference metronome
-            reference_start_time = 0 if blip_index == 0 else reference_metro[blip_index - 1]
-            delay_command = f'adelay={int(reference_start_time * 1000)}:all=1'
-
-            # 3. and stretch it to fit the reference metronome
+            # 2. stretch it to fit the reference metronome
             duration = blip_time - start_time
+            reference_start_time = 0 if blip_index == 0 else reference_metro[blip_index - 1]
             reference_duration = reference_metro[blip_index] - reference_start_time
             stretch_rate = duration / reference_duration
             stretch_command = f'atempo={stretch_rate}'
+
+            # 3. and align the audio start to the reference metronome
+            delay_command = f'adelay={int(reference_start_time * 1000)}:all=1'
 
             # string the command together
             slice_input = f'[{metro_index}:a]'
             slice_output = f'[a{metro_index}slice{blip_index}]'
             pts_command = 'asetpts=PTS-STARTPTS'
             slice_n_stretch_commands.append(
-                f'{slice_input} {pts_command}, {slice_command}, {delay_command}, {stretch_command} {slice_output};'
+                f'{slice_input} {pts_command}, {slice_command}, {stretch_command}, {delay_command} {slice_output};'
             )
             merge_inputs.append(slice_output)
 
@@ -120,27 +133,28 @@ def align_videos_to_metronome(cascade_dir):
     # use the video as input -
     # the regular audio will stretch
     # according to the metronome audio
-    ffmpeg_inputs = ' \\\n  '.join([
+    ffmpeg_inputs = ' \\\n          '.join([
         f'-i "{cascade_dir}/peer{peer_number}_video.webm"'
         for peer_number
         in range(num_peers)
     ])
 
-    nl = ' \\\n    '
+    nl = ' \\\n            '
     ffmpeg_command = f'''
-ffmpeg \\
-  {ffmpeg_inputs} \\
-  -filter_complex \\
-   "{nl.join(slice_n_stretch_commands)} \\
-    {audio_merge_command} \\
-    {video_stack_command}" \\
-  -map "[outa]" \\
-  -map "[outv]" \\
-  -ac 2 \\
-  {cascade_dir}/cascade.webm
+        ffmpeg \\
+          {ffmpeg_inputs} \\
+          -filter_complex \\
+           "{nl.join(slice_n_stretch_commands)} \\
+            {audio_merge_command} \\
+            {video_stack_command}" \\
+          -map "[outa]" \\
+          -map "[outv]" \\
+          -ac 2 \\
+          {cascade_dir}/cascade.webm
 '''
     # print(ffmpeg_command)
     subprocess.run(ffmpeg_command, check=True, shell=True)
+
 
 if __name__ == '__main__':
     cascade_dir = sys.argv[1]
