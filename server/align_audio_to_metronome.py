@@ -43,6 +43,29 @@ def detect_blip_onsets(metro_filename):
     return onset_times[is_on_marker]
 
 
+def align_beats(metronomes):
+    '''
+    Sometimes streaming has a hiccup and one beat
+    is sliced into what sounds like multiple beats.
+    To get around this, we align each reference beat
+    to the closest beat heard by each peer.
+    '''
+    # this is the naive version:
+    # if there are uneven number of blips,
+    # chop off the extra blips from the end
+    # (TODO: what it says in the docstring)
+    num_slices = min([
+        len(metro)
+        for metro
+        in metronomes
+    ])
+    return [
+        metro[:num_slices]
+        for metro
+        in metronomes
+    ]
+
+
 def align_videos_to_metronome(cascade_dir):
     '''
     Generate the ffmpeg command
@@ -52,16 +75,13 @@ def align_videos_to_metronome(cascade_dir):
     num_peers = get_num_peers(cascade_dir)
 
     # TODO: multiprocess this part?
-    metronomes = [
+    metronomes = align_beats([
         detect_blip_onsets(f'{cascade_dir}/peer{peer_number}_metronome.webm')
         for peer_number
         in range(num_peers)
-    ]
+    ])
     reference_metro = metronomes[0]
-
-    # if there are uneven number of blips,
-    # chop off the extra blips from the end
-    num_slices = min([ len(metro) for metro in metronomes ])
+    num_slices = len(reference_metro)
 
     slice_n_stretch_commands = []
     merge_inputs = []
@@ -87,7 +107,12 @@ def align_videos_to_metronome(cascade_dir):
             reference_start_time = 0 if blip_index == 0 else reference_metro[blip_index - 1]
             reference_duration = reference_metro[blip_index] - reference_start_time
             stretch_rate = duration / reference_duration
-            stretch_command = f'atempo={stretch_rate}'
+            if stretch_rate < 0.5:
+                new_duration = duration / 0.5
+                stretch_rate = new_duration / reference_duration
+                stretch_command = f'atempo=0.5, atempo={stretch_rate}'
+            else:
+                stretch_command = f'atempo={stretch_rate}'
 
             # 3. and align the audio start to the reference metronome
             delay_command = f'adelay={int(reference_start_time * 1000)}:all=1'
@@ -102,7 +127,7 @@ def align_videos_to_metronome(cascade_dir):
             merge_inputs.append(slice_output)
 
     # merge all the little slices
-    audio_merge_command = f'{"".join(merge_inputs)} amix=inputs={len(merge_inputs)}:duration=longest, dynaudnorm [outa];'
+    audio_merge_command = f'{"".join(merge_inputs)} amix=inputs={len(merge_inputs)}:duration=longest:dropout_transition=0 [outa];'
 
     # and stack all the videos into a grid
     video_inputs = ''.join([
