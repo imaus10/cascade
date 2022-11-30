@@ -1,10 +1,12 @@
 # cascade
 
-Here lies the project named `cascade`. It was an attempt to use "real-time" web technology to bring musicians together in times of isolation. May it rest in peace, having failed nobly. This eulogy is an explanation and justification of the energy squandered toward an unfulfilled possibility.
+Here lies the project named `cascade`. It was an attempt during COVID lockdown to use "real-time" web technology to bring musicians together in times of isolation. It streams audio & video using the peer-to-peer WebRTC API built into browsers. It was a way to generate zoom music videos, then in vogue, in nearly real time, with the feeling of a real performance (loosely). Unfortunately the particular streaming protocols weren't built for musical applications...
 
-If `cascade` had a tombstone in the digital cemetery, its inscription would read: "a testament to open source code and community-crafted protocols." Using [freely available code from the labor of many others](#credits), `cascade` was born as a video chat app - an uglier, fewer featured, and less compatible zoom clone - but with peer-to-peer streaming. That amount of technical sophistication with a week's worth of spare-time coding is incredible, and I am grateful to the giants on whose shoulders `cascade` stands, in addition to the great many enthusiastic non-giants, for sharing the fruits of their minds.
+May `cascade` rest in peace, having failed nobly. This eulogy is an explanation and justification of the energy squandered toward an unfulfilled possibility. If it had a tombstone in the digital cemetery, its inscription would read: "a testament to open source code and community-crafted protocols." Using [freely available code from the labor of many others](#credits), `cascade` was born as a video chat app - an uglier, fewer featured, and less compatible zoom clone - but with peer-to-peer streaming.
 
 But tragically, being a video app was not enough - `cascade` had ambitions beyond mere chat. It attempted to navigate the treachery of internet latency to achieve musical coordination - and to do so with no special effort by the participants, using only technology already available in contemporary web browsers. This unwieldy ambition is the cause of its death - it failed to deliver on its promise. A proof of concept that proved to be no proof at all. It rests peacefully now in the great Github in the cloud.
+
+Although I outline a technical path for [resurrection from the grave](#pontification-on-possibility-for-resurrection-from-the-grave), I won't be the one to implement it, since in-person music is viable again.
 
 ## Table of contents
 
@@ -115,6 +117,8 @@ For more details on the metronome onset detection and a visual example of aligni
 For usage information, consult the [server readme](./server/readme.md) and the [client readme](./client/README.md).
 
 ## Credits
+
+This amount of technical sophistication with a week's worth of spare-time coding is incredible, and I am grateful to the giants on whose shoulders it stands, in addition to the great multitude of enthusiastic non-giants, for sharing the fruits of their minds.
 
 - [FFmpeg](https://ffmpeg.org/): timestretch audio, combine streams to one video output
 - [`getUserMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia): capture audio & video from hardware devices in web browser
